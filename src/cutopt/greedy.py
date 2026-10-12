@@ -1,5 +1,4 @@
-from .models import Piece, StockLength, Problem, CutPattern
-
+from .models import CutPattern, Piece
 
 # First-fit algorithm
 

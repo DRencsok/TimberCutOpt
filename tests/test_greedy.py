@@ -1,17 +1,43 @@
 import pytest
 
 from cutopt.greedy import greedycut
-from cutopt.models import Piece, StockLength, Problem
-
+from cutopt.models import Piece, Problem, StockLength
 
 SECTION1 = "47x100 C24"
 SECTION2 = "47x150 C24"
 
 
+# Helper function that checks there are no overflow and no losses or duplicates that return
+
+
+def assert_valid(result, problem):
+    for i, board in enumerate(result):
+        used = sum(p.length for p in board.cuts) + (len(board.cuts) - 1) * board.kerf
+        assert used <= board.stock_length, (
+            f"board {i + 1} overflows: used {used} > {board.stock_length}"
+        )
+
+    lengths = []
+    for p in problem.pieces:
+        for _ in range(p.quantity):
+            lengths.append(p.length)
+
+    result_lengths = []
+    for board in result:
+        for piece in board.cuts:
+            result_lengths.append(piece.length)
+
+    assert sorted(lengths) == sorted(result_lengths), (
+        f"Expected {sorted(lengths)}, got {sorted(result_lengths)}"
+    )
+
+
 def test_single_piece_single_board_no_kerf():
     piece = Piece(SECTION1, "stud", 2000, 1)
     stock = StockLength(SECTION1, 2400)
-    result = greedycut(Problem((stock,), 0, (piece,)))
+    problem = Problem((stock,), 0, (piece,))
+    result = greedycut(problem)
+    assert_valid(result, problem)
     assert len(result) == 1
     assert result[0].cuts[0].length == 2000
 
@@ -19,7 +45,9 @@ def test_single_piece_single_board_no_kerf():
 def test_two_1200s_no_kerf_fits_single_2400():
     piece = Piece(SECTION1, "stud", 1200, 2)
     stock = StockLength(SECTION1, 2400)
-    result = greedycut(Problem((stock,), 0, (piece,)))
+    problem = Problem((stock,), 0, (piece,))
+    result = greedycut(problem)
+    assert_valid(result, problem)
     assert len(result[0].cuts) == 2
     assert result[0].cuts[0].length == 1200
     assert len(result) == 1
@@ -28,14 +56,18 @@ def test_two_1200s_no_kerf_fits_single_2400():
 def test_kerf_prevents_two_1200s_on_2400():
     piece = Piece(SECTION1, "stud", 1200, 2)
     stock = StockLength(SECTION1, 2400)
-    result = greedycut(Problem((stock,), 3, (piece,)))
+    problem = Problem((stock,), 3, (piece,))
+    result = greedycut(problem)
+    assert_valid(result, problem)
     assert len(result) == 2
 
 
 def test_one_2400_fits_one_2400_with_kerf():
     piece = Piece(SECTION1, "stud", 2400, 1)
     stock = StockLength(SECTION1, 2400)
-    result = greedycut(Problem((stock,), 3, (piece,)))
+    problem = Problem((stock,), 3, (piece,))
+    result = greedycut(problem)
+    assert_valid(result, problem)
     assert len(result) == 1
     assert result[0].cuts[0].length == 2400
 
@@ -46,7 +78,9 @@ def test_exact_fit_with_kerf():
         Piece(SECTION1, "stud", 1197, 1),
     )
     stock = StockLength(SECTION1, 2400)
-    result = greedycut(Problem((stock,), 3, pieces))
+    problem = Problem((stock,), 3, pieces)
+    result = greedycut(problem)
+    assert_valid(result, problem)
     assert len(result) == 1
 
 
@@ -58,7 +92,9 @@ def test_first_fit_reuses_earlier_board():
         Piece(SECTION1, "stud", 400, 1),
     )
     stock = StockLength(SECTION1, 2400)
-    result = greedycut(Problem((stock,), 0, pieces))
+    problem = Problem((stock,), 0, pieces)
+    result = greedycut(problem)
+    assert_valid(result, problem)
     assert len(result) == 2
     assert result[0].cuts[0].length == 2000
     assert result[0].cuts[1].length == 400
