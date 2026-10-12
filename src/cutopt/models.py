@@ -19,7 +19,7 @@ class StockLength:
 class Problem:
     stock: tuple[StockLength]
     kerf: int
-    piece: tuple[Piece]
+    pieces: tuple[Piece, ...]
 
 @dataclass
 class CutPattern:
