@@ -8,10 +8,16 @@ def greedycut(problem):
     # Sort the lists longest to shortest
     pieces = sorted(problem.pieces, key=lambda item: item.length, reverse=True)
     stocks = sorted(problem.stock, key=lambda item: item.length, reverse=True)
+    if not stocks:
+        raise ValueError("There is no stock to choose boards from")
 
     # Expand the quantitys to single items
     exp_pieces = []
     for piece in pieces:
+        if piece.length > stocks[0].length:
+            raise ValueError(
+                f"Piece {piece.label} ({piece.length}) is longer than stock {stocks[0].length}"
+            )
         for _ in range(piece.quantity):
             exp_pieces.append(Piece(section=piece.section, label=piece.label, length=piece.length))
 
