@@ -27,4 +27,5 @@ class Problem:
 class CutPattern:
     stock_length: int
     kerf: int
+    section: str
     cuts: list[Piece] = field(default_factory=list)
