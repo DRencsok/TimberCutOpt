@@ -68,6 +68,8 @@ _The CLI and example files are planned. Example output will be added once the CL
   section with no stock, raises its own exception. All of them subclass `CutOptError`, so the
   CLI and API can catch a single base class.
 
+  See [docs/DECISIONS.md](docs/DECISIONS.md) for the full decision log.
+
 ### Solvers
 - **Greedy: First-Fit Decreasing.** Sort pieces longest-first, then put each one on the first
   board it fits on. Open a new board if none fits. Very fast, usually close to optimal, with no
