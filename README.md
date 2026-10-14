@@ -46,7 +46,7 @@ rafter,2150,7,47x150 C24
 cutopt solve examples/shed.csv --stock 2400,3600,4800 --kerf 3 --solver ffd
 ```
 
-_Example output will be added once the CLI is implemented._
+_The CLI and example files are planned. Example output will be added once the CLI is implemented._
 
 ---
 
@@ -62,15 +62,25 @@ _Example output will be added once the CLI is implemented._
   job splits into independent 1D problems, one per section.
 - **Usage is data, not type.** A "stud" and a "nogging" are just labels. What decides which
   board a piece can come from is its section.
+- **Inputs are immutable.** `Piece`, `StockLength` and `Problem` are frozen dataclasses holding
+  tuples, so every solver receives exactly the same input and none can modify it for the others.
+- **Invalid input raises specific errors.** A piece longer than any stock of its section, or a
+  section with no stock, raises its own exception. All of them subclass `CutOptError`, so the
+  CLI and API can catch a single base class.
 
 ### Solvers
-- **Greedy: First-Fit / Best-Fit Decreasing.** Sort pieces longest-first, then put each one on
-  the first (or tightest-fitting) board it fits on. Open a new board if none fits. Very fast,
-  usually close to optimal, with no guarantee.
+- **Greedy: First-Fit Decreasing.** Sort pieces longest-first, then put each one on the first
+  board it fits on. Open a new board if none fits. Very fast, usually close to optimal, with no
+  guarantee. A Best-Fit variant (tightest-fitting board) is _(planned)_.
 - **CP-SAT (Google OR-Tools).** A constraint programming model that assigns pieces to boards
   under capacity and kerf constraints and minimises the total timber bought. Can prove
   optimality on small and medium instances, and is seeded with the greedy solution as a warm
   start. _(planned)_
+
+### Known limitations
+- Stock quantity limits are not enforced yet. Unlimited supply of every stock length is assumed.
+- New boards always use the longest stock length of their section. Shrinking each board to the
+  shortest length that still fits is planned.
 
 ---
 
@@ -86,21 +96,22 @@ runtime and optimality gap._
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/DRencsok/TimberCutOpt.git
 cd TimberCutOpt
 uv sync --extra dev
-uv run cutopt --help
 uv run pytest
 ```
+
+_A `cutopt` command-line tool is planned._
 
 ---
 
 ## Project structure
 
 ```
-src/cutopt/      core package: models, solvers, metrics, I/O, CLI (no web dependencies)
-tests/           pytest unit and property-based tests
-examples/        sample cut lists
+src/cutopt/      core package: models, solvers, errors (metrics, I/O, CLI planned). No web dependencies.
+tests/           pytest unit tests (property-based tests planned)
+examples/        sample cut lists (planned)
 benchmarks/      greedy vs CP-SAT comparison (planned)
 api/             Django REST API (planned)
 ```
@@ -112,8 +123,12 @@ thin layers on top of the same code.
 
 ## Roadmap
 
-- [ ] Core data models (pieces, stock, sections, kerf)
-- [ ] Greedy solvers (FFD, BFD) + CLI
+- [x] Core data models (pieces, stock, sections, kerf)
+- [x] First-Fit Decreasing solver with exact kerf and per-section solving
+- [ ] Shrink each board to the shortest stock length that fits
+- [ ] Best-Fit Decreasing
+- [ ] Metrics (boards, timber bought, waste %)
+- [ ] CLI + example cut lists
 - [ ] CP-SAT solver
 - [ ] Benchmark and results charts
 - [ ] Django REST API
