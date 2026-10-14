@@ -41,6 +41,16 @@ def _pack(pieces, stocks, kerf):
     return boards
 
 
+def _shrink(boards, stocks):
+    for board in boards:
+        used = sum(p.length for p in board.cuts) + (len(board.cuts) - 1) * board.kerf
+        for s in reversed(stocks):
+            if s.length >= used:
+                board.stock_length = s.length
+                break
+    return boards
+
+
 def greedycut(problem: Problem) -> list[CutPattern]:
     """Solve a cutting problem with First-Fit Decreasing.
 
@@ -84,7 +94,7 @@ def greedycut(problem: Problem) -> list[CutPattern]:
             raise NoStockForSectionError(f"No stock for section {section}")
         section_stocks = stocks_by_section[section]
 
-        #Expand pieces from quantity into single items 
+        # Expand pieces from quantity into single items
         exp_pieces = []
         for piece in section_pieces:
             if piece.length > section_stocks[0].length:
@@ -97,6 +107,6 @@ def greedycut(problem: Problem) -> list[CutPattern]:
                     Piece(section=piece.section, label=piece.label, length=piece.length)
                 )
 
-        all_boards.extend(_pack(exp_pieces, section_stocks, problem.kerf))
+        all_boards.extend(_shrink(_pack(exp_pieces, section_stocks, problem.kerf), section_stocks))
 
     return all_boards

@@ -79,8 +79,7 @@ _The CLI and example files are planned. Example output will be added once the CL
 
 ### Known limitations
 - Stock quantity limits are not enforced yet. Unlimited supply of every stock length is assumed.
-- New boards always use the longest stock length of their section. Shrinking each board to the
-  shortest length that still fits is planned.
+
 
 ---
 
@@ -125,7 +124,7 @@ thin layers on top of the same code.
 
 - [x] Core data models (pieces, stock, sections, kerf)
 - [x] First-Fit Decreasing solver with exact kerf and per-section solving
-- [ ] Shrink each board to the shortest stock length that fits
+- [x] Shrink each board to the shortest stock length that fits
 - [ ] Best-Fit Decreasing
 - [ ] Metrics (boards, timber bought, waste %)
 - [ ] CLI + example cut lists

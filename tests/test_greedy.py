@@ -37,55 +37,50 @@ def assert_valid(result, problem):
     )
 
 
-def test_single_piece_single_board_no_kerf():
-    piece = Piece(SECTION1, "stud", 2000, 1)
-    stock = StockLength(SECTION1, 2400)
-    problem = Problem((stock,), 0, (piece,))
+def make_problem(pieces, stocks, kerf=0, section=SECTION1):
+    """Build a single-section Problem from plain numbers.
+
+    pieces is a list of (length, quantity) pairs, stocks a list of lengths.
+    """
+    return Problem(
+        stock=tuple(StockLength(section, length) for length in stocks),
+        kerf=kerf,
+        pieces=tuple(Piece(section, "piece", length, qty) for length, qty in pieces),
+    )
+
+
+def solve(problem):
+    """Run greedycut and check the result is valid before returning it."""
     result = greedycut(problem)
     assert_valid(result, problem)
+    return result
+
+
+def test_single_piece_single_board_no_kerf():
+    result = solve(make_problem(pieces=[(2000, 1)], stocks=[2400]))
     assert len(result) == 1
     assert result[0].cuts[0].length == 2000
 
 
 def test_two_1200s_no_kerf_fits_single_2400():
-    piece = Piece(SECTION1, "stud", 1200, 2)
-    stock = StockLength(SECTION1, 2400)
-    problem = Problem((stock,), 0, (piece,))
-    result = greedycut(problem)
-    assert_valid(result, problem)
-    assert len(result[0].cuts) == 2
-    assert result[0].cuts[0].length == 1200
+    result = solve(make_problem(pieces=[(1200, 2)], stocks=[2400]))
     assert len(result) == 1
+    assert [p.length for p in result[0].cuts] == [1200, 1200]
 
 
 def test_kerf_prevents_two_1200s_on_2400():
-    piece = Piece(SECTION1, "stud", 1200, 2)
-    stock = StockLength(SECTION1, 2400)
-    problem = Problem((stock,), 3, (piece,))
-    result = greedycut(problem)
-    assert_valid(result, problem)
+    result = solve(make_problem(pieces=[(1200, 2)], stocks=[2400], kerf=3))
     assert len(result) == 2
 
 
 def test_one_2400_fits_one_2400_with_kerf():
-    piece = Piece(SECTION1, "stud", 2400, 1)
-    stock = StockLength(SECTION1, 2400)
-    problem = Problem((stock,), 3, (piece,))
-    result = greedycut(problem)
-    assert_valid(result, problem)
+    result = solve(make_problem(pieces=[(2400, 1)], stocks=[2400], kerf=3))
     assert len(result) == 1
     assert result[0].cuts[0].length == 2400
 
 
 def test_exact_fit_with_kerf():
-    pieces = (
-        Piece(SECTION1, "stud", 1200, 1),
-        Piece(SECTION1, "stud", 1197, 1),
-    )
-    stock = StockLength(SECTION1, 2400)
-    problem = Problem((stock,), 3, pieces)
-    result = greedycut(problem)
-    assert_valid(result, problem)
+    result = solve(make_problem(pieces=[(1200, 1), (1197, 1)], stocks=[2400], kerf=3))
     assert len(result) == 1
 
 
@@ -118,8 +113,7 @@ def test_piece_longer_than_stock():
 
 
 def test_no_pieces_returns_empty_list():
-    stock = StockLength(SECTION1, 2400)
-    assert greedycut(Problem((stock,), 0, ())) == []
+    assert solve(make_problem(pieces=[], stocks=[2400])) == []
 
 
 def test_no_stock_raises():
@@ -157,10 +151,22 @@ def test_section_without_stock_raises():
 
 def test_too_long_check_if_uses_own_section():
     piece = Piece(SECTION1, "rafter", 3000, 1)
-    stock = (
+    stocks = (
         StockLength(SECTION1, 2400),
         StockLength(SECTION2, 4800),
     )
-    problem = Problem(stock, 0, (piece,))
+    problem = Problem(stocks, 0, (piece,))
     with pytest.raises(PieceTooLongError, match="longer than stock"):
         greedycut(problem)
+
+def test_shrinks():
+    result = solve(make_problem(pieces=[(1950, 1)], stocks=[2400, 4800], kerf=3))
+    assert result[0].stock_length == 2400
+
+def test_picks_the_middle():
+    result = solve(make_problem(pieces = [(1700, 2)], stocks=[2400, 3600, 4800], kerf=3))
+    assert result[0].stock_length == 3600
+
+def test_keeps_a_full_board():
+    result = solve(make_problem(pieces = [(4700, 1)], stocks=[2400, 4800]))
+    assert result[0].stock_length == 4800
