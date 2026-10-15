@@ -128,7 +128,7 @@ thin layers on top of the same code.
 - [x] First-Fit Decreasing solver with exact kerf and per-section solving
 - [x] Shrink each board to the shortest stock length that fits
 - [ ] Best-Fit Decreasing
-- [ ] Metrics (boards, timber bought, waste %)
+- [X] Metrics (boards, timber bought, waste %)
 - [ ] CLI + example cut lists
 - [ ] CP-SAT solver
 - [ ] Benchmark and results charts

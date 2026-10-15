@@ -59,3 +59,16 @@ Best-Fit Decreasing will be able to reuse `_shrink` unchanged.
 **Alternatives:** Only assert specific outputs. Rejected, because a result can have the right
 board count and still be physically impossible.
 **Trade-off:** The invariant recomputes the used length independently of the solver, so a bug in the solver's formula can't hide.
+
+
+## 10. Metrics is a frozen dataclass with derived waste
+**Context:** The CLI, the API and the benchmark all need the same summary of a cutting plan.
+**Decision:** `Metrics` is a frozen dataclass storing only the raw facts (board count, timber bought, timber in pieces, shopping list). `waste` and `waste_percent` are computed as properties.
+**Alternatives:** Return a dict, or store waste as fields. Rejected: a dict has no fixed field names or autocomplete, and stored waste values could disagree with the totals.
+**Trade-off:** Waste is recalculated on every access, which costs nothing at this size. Waste includes kerf dust, since that timber is bought but never becomes a piece. Rounding happens only when displaying.
+
+## 11. Metrics are built with a classmethod, independent of the solver
+**Context:** Metrics must work on results from FFD, BFD and CP-SAT alike.
+**Decision:** `Metrics.from_boards(boards)` is an alternative constructor that takes only a list of boards. It knows nothing about how they were produced.
+**Alternatives:** A plain `summarize(boards)` function (equally valid), or metrics computed inside each solver (rejected: duplicated code, and the benchmark couldn't compare solvers fairly).
+**Trade-off:** None notable. Construction lives next to the data it produces, and an empty plan gives zero metrics instead of a division-by-zero crash.

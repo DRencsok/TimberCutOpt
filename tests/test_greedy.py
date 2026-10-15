@@ -159,14 +159,17 @@ def test_too_long_check_if_uses_own_section():
     with pytest.raises(PieceTooLongError, match="longer than stock"):
         greedycut(problem)
 
+
 def test_shrinks():
     result = solve(make_problem(pieces=[(1950, 1)], stocks=[2400, 4800], kerf=3))
     assert result[0].stock_length == 2400
 
+
 def test_picks_the_middle():
-    result = solve(make_problem(pieces = [(1700, 2)], stocks=[2400, 3600, 4800], kerf=3))
+    result = solve(make_problem(pieces=[(1700, 2)], stocks=[2400, 3600, 4800], kerf=3))
     assert result[0].stock_length == 3600
 
+
 def test_keeps_a_full_board():
-    result = solve(make_problem(pieces = [(4700, 1)], stocks=[2400, 4800]))
+    result = solve(make_problem(pieces=[(4700, 1)], stocks=[2400, 4800]))
     assert result[0].stock_length == 4800
