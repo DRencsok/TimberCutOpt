@@ -46,7 +46,7 @@ rafter,2150,7,47x150 C24
 cutopt solve examples/shed.csv --stock 2400,3600,4800 --kerf 3 --solver ffd
 ```
 
-_The CLI and example files are planned. Example output will be added once the CLI is implemented._
+_The CLI is planned._
 
 ---
 
@@ -110,9 +110,9 @@ _A `cutopt` command-line tool is planned._
 ## Project structure
 
 ```
-src/cutopt/      core package: models, solvers, errors (metrics, I/O, CLI planned). No web dependencies.
+src/cutopt/      core package: models, solvers, errors (CLI planned). No web dependencies.
 tests/           pytest unit tests (property-based tests planned)
-examples/        sample cut lists (planned)
+examples/        sample cut lists
 benchmarks/      greedy vs CP-SAT comparison (planned)
 api/             Django REST API (planned)
 ```
@@ -127,7 +127,7 @@ thin layers on top of the same code.
 - [x] Core data models (pieces, stock, sections, kerf)
 - [x] First-Fit Decreasing solver with exact kerf and per-section solving
 - [x] Shrink each board to the shortest stock length that fits
-- [ ] Best-Fit Decreasing
+- [ ] Best-Fit Decreasing (optional)
 - [X] Metrics (boards, timber bought, waste %)
 - [ ] CLI + example cut lists
 - [ ] CP-SAT solver

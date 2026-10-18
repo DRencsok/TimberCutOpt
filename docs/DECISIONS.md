@@ -54,7 +54,7 @@ Best-Fit Decreasing will be able to reuse `_shrink` unchanged.
 
 
 ## 9. Tests are split into invariants, behaviour and solver-specific checks
-**Context:** Several solvers (FFD, later BFD and CP-SAT) must all produce valid plans.
+**Context:** Several solvers (FFD and CP-SAT) must all produce valid plans.
 **Decision:** Every test result goes through `assert_valid`, which checks that no board overflows, no board mixes sections, and no piece is lost or duplicated. "What" tests (board counts, errors) are meant to be shared between solvers. "How" tests (exact first-fit placement) stay solver-specific. `make_problem` and `solve` helpers keep tests short.
 **Alternatives:** Only assert specific outputs. Rejected, because a result can have the right
 board count and still be physically impossible.
@@ -68,7 +68,13 @@ board count and still be physically impossible.
 **Trade-off:** Waste is recalculated on every access, which costs nothing at this size. Waste includes kerf dust, since that timber is bought but never becomes a piece. Rounding happens only when displaying.
 
 ## 11. Metrics are built with a classmethod, independent of the solver
-**Context:** Metrics must work on results from FFD, BFD and CP-SAT alike.
+**Context:** Metrics must work on results from FFD and CP-SAT alike.
 **Decision:** `Metrics.from_boards(boards)` is an alternative constructor that takes only a list of boards. It knows nothing about how they were produced.
 **Alternatives:** A plain `summarize(boards)` function (equally valid), or metrics computed inside each solver (rejected: duplicated code, and the benchmark couldn't compare solvers fairly).
 **Trade-off:** None notable. Construction lives next to the data it produces, and an empty plan gives zero metrics instead of a division-by-zero crash.
+
+## 12. CSV input is validated at the file level
+**Context:** cut lists come from users, often exported from Excel.
+**Decision:** read with utf-8-sig (handles Excel's hidden marker), strip spaces from header names, require the four columns but allow extra ones (e.g. notes), and report bad values with their row number. read_cut_list returns one Piece per row; quantities are expanded later by the solver.
+**Alternatives:** regex-validate the section format (rejected, because sections are free labels like KVH 60x120), or fail on extra columns (rejected as unfriendly).
+**Trade-off:** the format is permissive, so a typo in a section name creates a separate section instead of an error

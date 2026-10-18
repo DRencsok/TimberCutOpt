@@ -30,7 +30,6 @@ def _pack(pieces, stocks, kerf):
                 board.cuts.append(piece)
                 placed = True
                 break
-
         if not placed:
             new_board = CutPattern(
                 stock_length=stocks[0].length, kerf=kerf, section=stocks[0].section
