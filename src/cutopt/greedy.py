@@ -25,8 +25,7 @@ def _pack(pieces, stocks, kerf):
         placed = False
         for board in boards:
             # n pieces need n - 1 kerfs between them
-            used = sum(p.length for p in board.cuts) + (len(board.cuts) - 1) * board.kerf
-            if used + board.kerf + piece.length <= board.stock_length:
+            if board.used_length + board.kerf + piece.length <= board.stock_length:
                 board.cuts.append(piece)
                 placed = True
                 break
@@ -42,9 +41,8 @@ def _pack(pieces, stocks, kerf):
 
 def _shrink(boards, stocks):
     for board in boards:
-        used = sum(p.length for p in board.cuts) + (len(board.cuts) - 1) * board.kerf
         for s in reversed(stocks):
-            if s.length >= used:
+            if s.length >= board.used_length:
                 board.stock_length = s.length
                 break
     return boards

@@ -1,7 +1,7 @@
 import csv
 
 from .errors import CutOptError
-from .models import Piece
+from .models import Piece, StockLength
 
 REQUIRED = {"label", "length", "quantity", "section"}
 
@@ -30,8 +30,23 @@ def read_cut_list(path) -> tuple[Piece, ...]:
                 )
             except ValueError:
                 raise CutOptError(
-                    f"row {i - 1}'s length {row['length']}"
+                    f"row {i}'s length {row['length']}"
                     f" and quantity {row['quantity']}"
-                    f" must be whole numbers"
+                    f" must be a positive integer"
                 ) from None
         return tuple(pieces)
+
+
+def parse_stock(text) -> list[int]:
+    try:
+        stock_ints = [int(part) for part in text.split(",")]
+    except ValueError:
+        raise CutOptError(f"Expected integers, got {text}") from None
+    else:
+        return stock_ints
+
+
+def stock_for_sections(sections, lengths):
+    return tuple(
+        StockLength(section=section, length=length) for section in sections for length in lengths
+    )

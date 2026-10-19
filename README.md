@@ -107,6 +107,36 @@ _A `cutopt` command-line tool is planned._
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart LR
+    CSV[/"cut list (CSV)"/] --> CLI
+    JSON[/"JSON request"/] -.-> API
+
+    subgraph Front doors
+        CLI["cli.py<br/>cutopt solve"]
+        API["api/<br/>Django REST (planned)"]
+    end
+
+    subgraph Core["cutopt core (no web dependencies)"]
+        IO["io.py<br/>read CSV, parse stock"]
+        MODELS["models.py<br/>Piece, StockLength, Problem"]
+        GREEDY["greedy.py<br/>First-Fit Decreasing"]
+        CPSAT["cpsat.py<br/>exact solver (planned)"]
+        METRICS["metrics.py<br/>waste, shopping list"]
+    end
+
+    CLI --> IO --> MODELS
+    API -.-> MODELS
+    MODELS --> GREEDY
+    MODELS -.-> CPSAT
+    GREEDY --> METRICS
+    CPSAT -.-> METRICS
+    METRICS --> OUT[/"cutting plan + metrics"/]
+```
+
+
 ## Project structure
 
 ```
@@ -118,7 +148,10 @@ api/             Django REST API (planned)
 ```
 
 The optimizer core is a plain Python package. The CLI, the REST API and the benchmarks are
-thin layers on top of the same code.
+thin layers on top of the same code. The core never imports Django, so it stays lightweight to
+install, its tests run in under a second without a server, and the web framework could be
+swapped without touching the solvers. See
+[decision 13](docs/DECISIONS.md#13-the-core-has-no-web-dependencies) for the full reasoning.
 
 ---
 
@@ -128,8 +161,8 @@ thin layers on top of the same code.
 - [x] First-Fit Decreasing solver with exact kerf and per-section solving
 - [x] Shrink each board to the shortest stock length that fits
 - [ ] Best-Fit Decreasing (optional)
-- [X] Metrics (boards, timber bought, waste %)
-- [ ] CLI + example cut lists
+- [x] Metrics (boards, timber bought, waste %)
+- [x] CLI + example cut lists
 - [ ] CP-SAT solver
 - [ ] Benchmark and results charts
 - [ ] Django REST API

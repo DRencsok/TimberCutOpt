@@ -49,7 +49,7 @@ def test_missing_column(tmp_path):
 
 
 def test_wrong_values(tmp_path):
-    with pytest.raises(CutOptError, match="row 2"):
+    with pytest.raises(CutOptError, match="positive integer"):
         write_csv(
             tmp_path,
             "label,length,quantity,section\nstud,1950,1,47x150 C24\nstud,abc,1,47x100 C18\n ",
@@ -85,3 +85,11 @@ def test_shed_example_is_readable():
         Piece(label="nogging", length=550, quantity=12, section="47x100 C24"),
         Piece(label="rafter", length=2150, quantity=7, section="47x150 C24"),
     )
+
+
+def test_negative_length_in_csv(tmp_path):
+    with pytest.raises(CutOptError, match="must be a positive integer"):
+        write_csv(
+            tmp_path,
+            "label,length,quantity,section\nstud,1950,4,47x150 C24\nstud,-1400,7,47x150 C24",
+        )

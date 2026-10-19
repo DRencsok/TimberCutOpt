@@ -20,10 +20,10 @@ class Metrics:
     def waste_percent(self) -> float:
         if self.stock_length_total == 0:
             return 0.0
-        return (self.waste / self.stock_length_total) * 100
-
+        return self.waste / self.stock_length_total * 100
 
     """Summarize the cutting plan from any solver """
+
     @classmethod
     def from_boards(cls, boards: list[CutPattern]) -> Self:
         stock_length_total = sum(b.stock_length for b in boards)

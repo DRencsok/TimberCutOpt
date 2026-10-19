@@ -77,4 +77,25 @@ board count and still be physically impossible.
 **Context:** cut lists come from users, often exported from Excel.
 **Decision:** read with utf-8-sig (handles Excel's hidden marker), strip spaces from header names, require the four columns but allow extra ones (e.g. notes), and report bad values with their row number. read_cut_list returns one Piece per row; quantities are expanded later by the solver.
 **Alternatives:** regex-validate the section format (rejected, because sections are free labels like KVH 60x120), or fail on extra columns (rejected as unfriendly).
-**Trade-off:** the format is permissive, so a typo in a section name creates a separate section instead of an error
+**Trade-off:** the format is permissive, so a typo in a section name creates a separate section instead of an error.
+
+## 13. The core has no web dependencies
+**Context:** The optimizer will be used from a CLI, a REST API and a benchmark.
+**Decision:** The core package (`src/cutopt/`) never imports Django or any other web library.
+It takes Python objects in and returns Python objects. The dependency goes one way only:
+`api/` imports `cutopt`, never the other way round. Each entry point (CLI, API, benchmark) is a
+thin layer that wires the same core modules together.
+**Why:**
+- **Lightweight to use:** the CLI, or calling `greedycut` from a script, doesn't require
+  installing Django and its stack.
+- **Easy to test:** the whole test suite runs in under a second, with no server or database.
+- **Replaceable front end:** switching from Django to another framework (e.g. FastAPI) would
+  only touch `api/`; solvers, models and metrics stay unchanged.
+- **Clear boundaries:** web concerns (HTTP, JSON, authentication, databases) stay in the web
+  layer, and optimisation stays in the core.
+
+**Alternatives:** Build the solver inside the Django project. Rejected: every use of the solver
+would then need Django, and tests would need its setup.
+**Trade-off:** The CLI ships inside the package, so the core does depend on the small CLI
+libraries `typer` and `rich`. Django will go into a separate dependency group, not the core
+dependencies.
