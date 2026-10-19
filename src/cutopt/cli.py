@@ -32,6 +32,10 @@ def solve(
     ] = "2400,3600,4800,6000",
     kerf: Annotated[int, typer.Option(help="Saw blade width in mm")] = 3,
 ):
+    """Optimise a cut list and print the cutting plan, shopping list and summary.
+
+    Stock lengths apply to every section in the cut list.
+    """
 
     try:
         pieces = read_cut_list(cut_list)
@@ -80,7 +84,7 @@ def solve(
             str(metrics.stock_length_total),
             str(metrics.piece_length_total),
             str(metrics.waste),
-            str(round(metrics.waste_percent, 2)),
+            f"{metrics.waste_percent:.2f}",
         )
         console.print(table)
 
@@ -90,12 +94,15 @@ def solve(
 
 
 def _format_cuts(board):
+    """Describe a board's cuts as text, grouping identical pieces,
+    e.g. 'stud 1950 x2, nogging 550'."""
+
     counter = Counter((piece.label, piece.length) for piece in board.cuts)
     parts = []
     for (label, length), count in counter.items():
         if count == 1:
             parts.append(f"{label} {length}")
-        if count > 1:
+        else:
             parts.append(f"{label} {length} x{count}")
     return ", ".join(parts)
 

@@ -24,7 +24,6 @@ def _pack(pieces, stocks, kerf):
     for piece in pieces:
         placed = False
         for board in boards:
-            # n pieces need n - 1 kerfs between them
             if board.used_length + board.kerf + piece.length <= board.stock_length:
                 board.cuts.append(piece)
                 placed = True

@@ -33,7 +33,7 @@ class StockLength:
 
 @dataclass(frozen=True)
 class Problem:
-    stock: tuple[StockLength]
+    stock: tuple[StockLength, ...]
     kerf: int
     pieces: tuple[Piece, ...]
 
@@ -57,4 +57,6 @@ class CutPattern:
 
     @property
     def offcut(self) -> int:
-        return self.stock_length - self.used_length
+        if not self.cuts:
+            return self.stock_length
+        return max(self.stock_length - self.used_length - self.kerf, 0)

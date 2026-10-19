@@ -43,10 +43,48 @@ rafter,2150,7,47x150 C24
 ```
 
 ```
-cutopt solve examples/shed.csv --stock 2400,3600,4800 --kerf 3 --solver ffd
+cutopt solve examples/shed.csv --stock 2400,3600,4800 --kerf 3
 ```
 
-_The CLI is planned._
+Output:
+
+```
+                               Cutting Plan
++------------------------------------------------------------------------+
+| Id | Section    | Stock | Cuts                           | Offcut (mm) |
+|----+------------+-------+--------------------------------+-------------|
+| 1  | 47x150 C24 | 4800  | rafter 2150 x2                 |     494     |
+| 2  | 47x150 C24 | 4800  | rafter 2150 x2                 |     494     |
+| 3  | 47x150 C24 | 4800  | rafter 2150 x2                 |     494     |
+| 4  | 47x150 C24 | 2400  | rafter 2150                    |     247     |
+| 5  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
+| 6  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
+| 7  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
+| 8  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
+| 9  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
+| 10 | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
+| 11 | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
+| 12 | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
+| 13 | 47x100 C24 | 2400  | nogging 550 x4                 |     188     |
++------------------------------------------------------------------------+
+          Shopping List
++--------------------------------+
+| Section    | Length | Quantity |
+|------------+--------+----------|
+| 47x100 C24 | 2400   | 1        |
+| 47x100 C24 | 4800   | 8        |
+| 47x150 C24 | 2400   | 1        |
+| 47x150 C24 | 4800   | 3        |
++--------------------------------+
+                               Summary
++--------------------------------------------------------------------+
+| Boards | Stock length total | Piece length total | Waste | Waste % |
+|--------+--------------------+--------------------+-------+---------|
+| 13     | 57600              | 52850              | 4750  | 8.25    |
++--------------------------------------------------------------------+
+```
+
+A `--solver` option to choose between greedy and CP-SAT is _(planned)_.
 
 ---
 
@@ -68,7 +106,7 @@ _The CLI is planned._
   section with no stock, raises its own exception. All of them subclass `CutOptError`, so the
   CLI and API can catch a single base class.
 
-  See [docs/DECISIONS.md](docs/DECISIONS.md) for the full decision log.
+See [docs/DECISIONS.md](docs/DECISIONS.md) for the full decision log.
 
 ### Solvers
 - **Greedy: First-Fit Decreasing.** Sort pieces longest-first, then put each one on the first
@@ -81,6 +119,8 @@ _The CLI is planned._
 
 ### Known limitations
 - Stock quantity limits are not enforced yet. Unlimited supply of every stock length is assumed.
+- The CLI's `--stock` lengths apply to every section in the cut list. Different lengths per
+  section (e.g. via a stock CSV file) are planned.
 
 
 ---
@@ -101,9 +141,11 @@ git clone https://github.com/DRencsok/TimberCutOpt.git
 cd TimberCutOpt
 uv sync --extra dev
 uv run pytest
+uv run cutopt --help
+uv run cutopt solve examples/shed.csv
 ```
 
-_A `cutopt` command-line tool is planned._
+`--stock` defaults to `2400,3600,4800,6000` and `--kerf` to `3`.
 
 ---
 
@@ -136,11 +178,12 @@ flowchart LR
     METRICS --> OUT[/"cutting plan + metrics"/]
 ```
 
+---
 
 ## Project structure
 
 ```
-src/cutopt/      core package: models, solvers, errors (CLI planned). No web dependencies.
+src/cutopt/      core package: models, solver, metrics, CSV input, CLI. No web dependencies.
 tests/           pytest unit tests (property-based tests planned)
 examples/        sample cut lists
 benchmarks/      greedy vs CP-SAT comparison (planned)
