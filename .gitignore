@@ -9,3 +9,4 @@ dist/
 build/
 plan.json
 .vscode/
+scratch.py

@@ -1,9 +1,10 @@
-from ortools.sat.python import cp_model
 from collections import defaultdict
 
-from .models import Problem, CutPattern
+from ortools.sat.python import cp_model
+
 from .greedy import greedycut
-from .io import read_cut_list, parse_stock, stock_for_sections
+from .io import parse_stock, read_cut_list, stock_for_sections
+from .models import CutPattern, Problem
 
 
 def cp_sat(problem: Problem) -> list[CutPattern]:
@@ -32,14 +33,49 @@ def cp_sat(problem: Problem) -> list[CutPattern]:
         for row in x:
             model.add(sum(row) == 1)
 
+        section_lengths = [stock.length for stock in problem.stock if stock.section == section]
+
+        # Create a 2D Table with boards and their stock lengths
+        use = []
+        for b in range(len(boards)):
+            board_row = []
+            for s in range(len(section_lengths)):
+                board_row.append(model.new_bool_var(f"use_{b}_{s}"))
+            use.append(board_row)
+
+        for row in use:
+            model.add(sum(row) <= 1)
+
+        # Sum of board's used lengths cannot be bigger than the board's length
+        for b in range(len(x[0])):
+            left = sum(section_pieces[p].length * x[p][b] for p in range(len(x)))
+            right = sum(section_lengths[s] * use[b][s] for s in range(len(use[0])))
+
+            model.add(left <= right)
+
+        # Add a goal to minimize the timber bought
+        total = sum(
+            section_lengths[s] * use[b][s]
+            for b in range(len(use))
+            for s in range(len(section_lengths))
+        )
+        model.minimize(total)
+
         solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = 10
         status = solver.solve(model)
+        print(solver.objective_value)
         print(solver.status_name(status))
 
         for p in range(len(x)):
             for b in range(len(boards)):
                 if solver.value(x[p][b]) == 1:
                     print(f" Piece {p} {section_pieces[p].length} -> board {b}")
+
+        for b in range(len(use)):
+            for s in range(len(use[b])):
+                if solver.value(use[b][s]) == 1:
+                    print(f"Board {b} length: {section_lengths[s]}")
 
 
 if __name__ == "__main__":
