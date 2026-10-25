@@ -84,7 +84,13 @@ Output:
 +--------------------------------------------------------------------+
 ```
 
-A `--solver` option to choose between greedy and CP-SAT is _(planned)_.
+Use `--solver` to choose the solver: `greedy` (the default) or `cp_sat`.
+
+```
+cutopt solve examples/shed.csv --solver cp_sat
+```
+
+An unknown solver name exits with an error that lists the valid names.
 
 ---
 
@@ -111,16 +117,18 @@ See [docs/DECISIONS.md](docs/DECISIONS.md) for the full decision log.
 ### Solvers
 - **Greedy: First-Fit Decreasing.** Sort pieces longest-first, then put each one on the first
   board it fits on. Open a new board if none fits. Very fast, usually close to optimal, with no
-  guarantee. A Best-Fit variant (tightest-fitting board) is _(planned)_.
+  guarantee.
 - **CP-SAT (Google OR-Tools).** A constraint programming model that assigns pieces to boards
   under capacity and kerf constraints and minimises the total timber bought. Can prove
-  optimality on small and medium instances, and is seeded with the greedy solution as a warm
-  start. _(planned)_
+  optimality on small and medium instances. Greedy runs first, and its board count is the most
+  boards CP-SAT may use, so CP-SAT's plan is never worse than greedy's.
 
 ### Known limitations
 - Stock quantity limits are not enforced yet. Unlimited supply of every stock length is assumed.
 - The CLI's `--stock` lengths apply to every section in the cut list. Different lengths per
   section (e.g. via a stock CSV file) are planned.
+- `--solver cp_sat` always uses CP-SAT's default 10-second time limit. The CLI has no option
+  to change it yet.
 
 
 ---
@@ -145,7 +153,7 @@ uv run cutopt --help
 uv run cutopt solve examples/shed.csv
 ```
 
-`--stock` defaults to `2400,3600,4800,6000` and `--kerf` to `3`.
+`--stock` defaults to `2400,3600,4800,6000`, `--kerf` to `3` and `--solver` to `greedy`.
 
 ---
 
@@ -165,16 +173,16 @@ flowchart LR
         IO["io.py<br/>read CSV, parse stock"]
         MODELS["models.py<br/>Piece, StockLength, Problem"]
         GREEDY["greedy.py<br/>First-Fit Decreasing"]
-        CPSAT["cpsat.py<br/>exact solver (planned)"]
+        CPSAT["cp_sat.py<br/>exact solver"]
         METRICS["metrics.py<br/>waste, shopping list"]
     end
 
     CLI --> IO --> MODELS
     API -.-> MODELS
     MODELS --> GREEDY
-    MODELS -.-> CPSAT
+    MODELS --> CPSAT
     GREEDY --> METRICS
-    CPSAT -.-> METRICS
+    CPSAT --> METRICS
     METRICS --> OUT[/"cutting plan + metrics"/]
 ```
 
@@ -191,10 +199,12 @@ api/             Django REST API (planned)
 ```
 
 The optimizer core is a plain Python package. The CLI, the REST API and the benchmarks are
-thin layers on top of the same code. The core never imports Django, so it stays lightweight to
-install, its tests run in under a second without a server, and the web framework could be
-swapped without touching the solvers. See
+thin layers on top of the same code. The core never imports Django, so using it doesn't
+require a web stack, its tests run without a server, and the web framework could be swapped
+without touching the solvers. See
 [decision 13](docs/DECISIONS.md#13-the-core-has-no-web-dependencies) for the full reasoning.
+OR-Tools is a required dependency, so both solvers work after a plain install (see
+[decision 15](docs/DECISIONS.md#15-or-tools-is-a-required-dependency)).
 
 ---
 
@@ -203,10 +213,9 @@ swapped without touching the solvers. See
 - [x] Core data models (pieces, stock, sections, kerf)
 - [x] First-Fit Decreasing solver with exact kerf and per-section solving
 - [x] Shrink each board to the shortest stock length that fits
-- [ ] Best-Fit Decreasing (optional)
 - [x] Metrics (boards, timber bought, waste %)
 - [x] CLI + example cut lists
-- [ ] CP-SAT solver
+- [x] CP-SAT solver
 - [ ] Benchmark and results charts
 - [ ] Django REST API
 - [ ] Web frontend with visual cutting diagrams

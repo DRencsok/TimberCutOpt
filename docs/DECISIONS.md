@@ -65,7 +65,6 @@ still slip through.
 **Alternatives:** One function doing everything. Rejected as harder to read, test and extend.
 
 **Trade-off:** Two passes over the boards, which costs nothing noticeable.
-Best-Fit Decreasing will be able to reuse `_shrink` unchanged.
 
 ## 8. Boards are shrunk after packing, not during
 **Context:** `_pack` always opens the longest stock board, which wastes timber on boards that end up half empty.
@@ -126,7 +125,7 @@ thin layer that wires the same core modules together.
 **Why:**
 - **Lightweight to use:** the CLI, or calling `greedycut` from a script, doesn't require
   installing Django and its stack.
-- **Easy to test:** the whole test suite runs in under a second, with no server or database.
+- **Easy to test:** the whole test suite runs with no server or database.
 - **Replaceable front end:** switching from Django to another framework (e.g. FastAPI) would
   only touch `api/`; solvers, models and metrics stay unchanged.
 - **Clear boundaries:** web concerns (HTTP, JSON, authentication, databases) stay in the web
@@ -135,8 +134,8 @@ thin layer that wires the same core modules together.
 **Alternatives:** Build the solver inside the Django project. Rejected: every use of the solver
 would then need Django, and tests would need its setup.
 **Trade-off:** The CLI ships inside the package, so the core does depend on the small CLI
-libraries `typer` and `rich`. Django will go into a separate dependency group, not the core
-dependencies.
+libraries `typer` and `rich`, plus OR-Tools for the CP-SAT solver (see decision 15). Django will
+go into a separate dependency group, not the core dependencies.
 
 ## 14. CP-SAT runs greedy first and uses its board count as a ceiling
 **Context:** The CP-SAT model needs a fixed number of boards up front: one yes/no variable per piece × board. Too few boards could cut off the best plan; too many slow the solver down.
@@ -148,3 +147,12 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 - Move expansion and validation out of `greedycut` into shared helpers. Rejected for now: it still doesn't give a board count.
 
 **Trade-off:** CP-SAT depends on greedy, so a greedy bug can affect both. Greedy takes milliseconds, so it barely affects CP-SAT's runtime in the benchmark.
+
+## 15. OR-Tools is a required dependency
+**Context:** `cp_sat.py` imports OR-Tools at the top of the module. As an optional extra, a plain install would crash with an `ImportError` as soon as `cp_sat` is imported, even for users who only want greedy.
+
+**Decision:** `ortools` is in the core `dependencies`, so every install can use both solvers.
+
+**Alternatives:** Keep it as an optional `cpsat` extra and import it lazily, with a clear error when it's missing. Rejected for now: CP-SAT is a main feature of the project, not an add-on, and the extra adds import guards and an install step to remember.
+
+**Trade-off:** The install gets heavier: OR-Tools is a ~25 MB wheel and pulls in `numpy`, `pandas`, `protobuf` and `absl-py`. This doesn't conflict with decision 13, which is about keeping web libraries out of the core. OR-Tools is part of the optimisation itself.

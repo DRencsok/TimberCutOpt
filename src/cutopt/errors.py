@@ -8,3 +8,7 @@ class NoStockForSectionError(CutOptError):
 
 class PieceTooLongError(CutOptError):
     """A piece is longer than every stock length of its section."""
+
+
+class UnknownSolverError(CutOptError):
+    """User asked for a solver that does not exist"""

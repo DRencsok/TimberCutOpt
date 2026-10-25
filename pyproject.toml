@@ -7,15 +7,19 @@ requires-python = ">=3.12"
 dependencies = [
     "typer>=0.12",
     "rich>=13",
+    "ortools>=9.10",
 ]
 
 [project.optional-dependencies]
-cpsat = ["ortools>=9.10"]
 dev = [
     "pytest>=8",
     "hypothesis>=6",
     "ruff>=0.6",
     "ipykernel>=7.4.0",
+]
+bench = [
+    "matplotlib>=3.11.2",
+    "pandas>=3.0.6",
 ]
 
 [project.scripts]

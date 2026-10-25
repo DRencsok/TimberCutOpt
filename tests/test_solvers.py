@@ -2,11 +2,13 @@ import pytest
 from helpers import SECTION1, SECTION2, assert_valid, make_problem
 
 from cutopt.cp_sat import cp_sat
-from cutopt.errors import CutOptError, NoStockForSectionError, PieceTooLongError
+from cutopt.errors import CutOptError, NoStockForSectionError, PieceTooLongError, UnknownSolverError
+from cutopt.get_solver import SOLVERS as VALID_SOLVERS
+from cutopt.get_solver import get_solver
 from cutopt.greedy import greedycut
 from cutopt.models import Piece, Problem, StockLength
 
-# Every test in this file runs once per solver
+# Solvers the shared tests below run against
 SOLVERS = [greedycut, cp_sat]
 
 
@@ -143,3 +145,10 @@ def test_keeps_a_full_board(solver):
     result = solver(problem)
     assert_valid(result, problem)
     assert result[0].stock_length == 4800
+
+
+def test_unknown_solver_raises():
+    name = "banana"
+    valid = ", ".join(VALID_SOLVERS)
+    with pytest.raises(UnknownSolverError, match=f"Solver named {name} is not valid, try {valid}"):
+        get_solver(name)

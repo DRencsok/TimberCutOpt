@@ -7,13 +7,15 @@ from rich.console import Console
 from rich.table import Table
 
 from .errors import CutOptError
-from .greedy import greedycut
+from .get_solver import SOLVERS, get_solver
 from .io import parse_stock, read_cut_list, stock_for_sections
 from .metrics import Metrics
 from .models import Problem
 
 app = typer.Typer()
 console = Console()
+
+SOLVERS = ", ".join(SOLVERS)
 
 
 @app.callback()
@@ -31,6 +33,9 @@ def solve(
         str, typer.Option(help="Comma-separated stock lengths in mm")
     ] = "2400,3600,4800,6000",
     kerf: Annotated[int, typer.Option(help="Saw blade width in mm")] = 3,
+    solver: Annotated[
+        str, typer.Option(help=f"Pick the solver from the available solvers: {SOLVERS}")
+    ] = "greedy",
 ):
     """Optimise a cut list and print the cutting plan, shopping list and summary.
 
@@ -42,7 +47,8 @@ def solve(
         sections = {p.section for p in pieces}
         lengths = parse_stock(stock)
         stocks = stock_for_sections(sections, lengths)
-        boards = greedycut(Problem(stock=stocks, kerf=kerf, pieces=pieces))
+        solver_picked = get_solver(solver)
+        boards = solver_picked(Problem(stock=stocks, kerf=kerf, pieces=pieces))
         metrics = Metrics.from_boards(boards)
 
         # Print Tables of summary
