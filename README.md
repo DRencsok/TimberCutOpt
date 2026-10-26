@@ -90,7 +90,6 @@ Use `--solver` to choose the solver: `greedy` (the default) or `cp_sat`.
 cutopt solve examples/shed.csv --solver cp_sat
 ```
 
-An unknown solver name exits with an error that lists the valid names.
 
 ---
 
