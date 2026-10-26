@@ -156,3 +156,14 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 **Alternatives:** Keep it as an optional `cpsat` extra and import it lazily, with a clear error when it's missing. Rejected for now: CP-SAT is a main feature of the project, not an add-on, and the extra adds import guards and an install step to remember.
 
 **Trade-off:** The install gets heavier: OR-Tools is a ~25 MB wheel and pulls in `numpy`, `pandas`, `protobuf` and `absl-py`. This doesn't conflict with decision 13, which is about keeping web libraries out of the core. OR-Tools is part of the optimisation itself.
+
+## 16. `--time-limit` only applies to CP-SAT
+**Context:** CP-SAT can run for a long time on large cut lists, so the CLI needs a way to cap its runtime. Greedy finishes in milliseconds and has no time limit parameter.
+
+**Decision:** `solve` has a `--time-limit` option in seconds. The CLI passes it only when the solver is `cp_sat`. With `greedy` it is silently ignored. When the option is left out, `cp_sat` uses its own default (10 s).
+
+**Alternatives:**
+- Give every solver a `time_limit` parameter. Rejected: greedy would take an argument it never uses.
+- Reject or warn about `--time-limit` with greedy. Rejected as unfriendly: the option does no harm there, and scripts can pass the same flags whichever solver they use.
+
+**Trade-off:** The CLI has to know which solver takes which option. That's fine with two solvers.

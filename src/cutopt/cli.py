@@ -36,6 +36,13 @@ def solve(
     solver: Annotated[
         str, typer.Option(help=f"Pick the solver from the available solvers: {SOLVERS}")
     ] = "greedy",
+    time_limit: Annotated[
+        float | None,
+        typer.Option(
+            min=0,
+            help="Time limit for the cp_sat solver in seconds (cp_sat only, ignored by greedy)",
+        ),
+    ] = None,
 ):
     """Optimise a cut list and print the cutting plan, shopping list and summary.
 
@@ -48,7 +55,11 @@ def solve(
         lengths = parse_stock(stock)
         stocks = stock_for_sections(sections, lengths)
         solver_picked = get_solver(solver)
-        boards = solver_picked(Problem(stock=stocks, kerf=kerf, pieces=pieces))
+        problem = Problem(stock=stocks, kerf=kerf, pieces=pieces)
+        if time_limit is not None and solver == "cp_sat":
+            boards = solver_picked(problem, time_limit)
+        else:
+            boards = solver_picked(problem)
         metrics = Metrics.from_boards(boards)
 
         # Print Tables of summary
