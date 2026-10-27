@@ -31,7 +31,7 @@ def solve(
     ],
     stock: Annotated[
         str, typer.Option(help="Comma-separated stock lengths in mm")
-    ] = "2400,3600,4800,6000",
+    ] = "2400,3600,4800",
     kerf: Annotated[int, typer.Option(help="Saw blade width in mm")] = 3,
     solver: Annotated[
         str, typer.Option(help=f"Pick the solver from the available solvers: {SOLVERS}")
