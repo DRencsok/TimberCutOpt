@@ -43,7 +43,7 @@ rafter,2150,7,47x150 C24
 ```
 
 ```
-cutopt solve examples/shed.csv --stock 2400,3600,4800 --kerf 3
+cutopt solve examples/shed.csv
 ```
 
 Output:
@@ -57,22 +57,20 @@ Output:
 | 2  | 47x150 C24 | 4800  | rafter 2150 x2                 |     494     |
 | 3  | 47x150 C24 | 4800  | rafter 2150 x2                 |     494     |
 | 4  | 47x150 C24 | 2400  | rafter 2150                    |     247     |
-| 5  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
-| 6  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
-| 7  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
-| 8  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
-| 9  | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
-| 10 | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
-| 11 | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
-| 12 | 47x100 C24 | 4800  | wall stud 1950 x2, nogging 550 |     341     |
-| 13 | 47x100 C24 | 2400  | nogging 550 x4                 |     188     |
+| 5  | 47x100 C24 | 6000  | wall stud 1950 x3              |     141     |
+| 6  | 47x100 C24 | 6000  | wall stud 1950 x3              |     141     |
+| 7  | 47x100 C24 | 6000  | wall stud 1950 x3              |     141     |
+| 8  | 47x100 C24 | 6000  | wall stud 1950 x3              |     141     |
+| 9  | 47x100 C24 | 6000  | wall stud 1950 x3              |     141     |
+| 10 | 47x100 C24 | 6000  | wall stud 1950, nogging 550 x7 |     176     |
+| 11 | 47x100 C24 | 3600  | nogging 550 x5                 |     835     |
 +------------------------------------------------------------------------+
           Shopping List
 +--------------------------------+
 | Section    | Length | Quantity |
 |------------+--------+----------|
-| 47x100 C24 | 2400   | 1        |
-| 47x100 C24 | 4800   | 8        |
+| 47x100 C24 | 3600   | 1        |
+| 47x100 C24 | 6000   | 6        |
 | 47x150 C24 | 2400   | 1        |
 | 47x150 C24 | 4800   | 3        |
 +--------------------------------+
@@ -80,7 +78,7 @@ Output:
 +--------------------------------------------------------------------+
 | Boards | Stock length total | Piece length total | Waste | Waste % |
 |--------+--------------------+--------------------+-------+---------|
-| 13     | 57600              | 52850              | 4750  | 8.25    |
+| 11     | 56400              | 52850              | 3550  | 6.29    |
 +--------------------------------------------------------------------+
 ```
 
@@ -89,6 +87,16 @@ Use `--solver` to choose the solver: `greedy` (the default) or `cp_sat`.
 ```
 cutopt solve examples/shed.csv --solver cp_sat
 ```
+
+CP-SAT stops after 10 seconds by default. Use `--time-limit` to give it more or less time
+(in seconds). Large cut lists may need longer to reach the best plan:
+
+```
+cutopt solve examples/shed.csv --solver cp_sat --time-limit 30
+```
+
+When the time runs out, CP-SAT returns the best plan it has found so far, or greedy's plan if
+it found none. `--time-limit` only applies to `cp_sat`; greedy ignores it.
 
 
 ---
@@ -126,8 +134,6 @@ See [docs/DECISIONS.md](docs/DECISIONS.md) for the full decision log.
 - Stock quantity limits are not enforced yet. Unlimited supply of every stock length is assumed.
 - The CLI's `--stock` lengths apply to every section in the cut list. Different lengths per
   section (e.g. via a stock CSV file) are planned.
-- `--solver cp_sat` always uses CP-SAT's default 10-second time limit. The CLI has no option
-  to change it yet.
 
 
 ---
@@ -153,6 +159,7 @@ uv run cutopt solve examples/shed.csv
 ```
 
 `--stock` defaults to `2400,3600,4800,6000`, `--kerf` to `3` and `--solver` to `greedy`.
+`--time-limit` sets CP-SAT's time limit in seconds (default 10) and is ignored by greedy.
 
 ---
 

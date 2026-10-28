@@ -167,3 +167,40 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 - Reject or warn about `--time-limit` with greedy. Rejected as unfriendly: the option does no harm there, and scripts can pass the same flags whichever solver they use.
 
 **Trade-off:** The CLI has to know which solver takes which option. That's fine with two solvers.
+
+## 17. Benchmark dependencies go in a `bench` extra
+**Context:** The benchmark needs a table library to collect results and a plotting library for the charts in the README.
+
+**Decision:** pandas and matplotlib are in an optional `bench` group, installed with `uv sync --extra bench`. pandas collects the result rows and writes the CSV; matplotlib draws the charts as PNG files.
+
+**Alternatives:** Plotly. Rejected: its charts are interactive HTML, which GitHub doesn't render in a README, and saving them as PNG needs another heavy dependency (`kaleido`). It may still suit the planned web frontend.
+
+**Trade-off:** One more install flag to remember. `uv sync --extra dev` alone removes the benchmark libraries again.
+
+## 18. Solvers are timed from outside
+**Context:** The benchmark compares runtimes, and a single measurement is noisy (other programs, first-call setup).
+
+**Decision:** `benchmarks/timing.py` times a solver from outside with `perf_counter`, around the solver call only. Each solver first solves a tiny warm-up problem untimed, then runs `repeats` times; the median time and the last run's plan are returned. The solvers themselves contain no timing code.
+
+**Alternatives:**
+- Time the whole script. Rejected: it would include imports, problem generation and plotting.
+
+**Trade-off:** CP-SAT can return a different plan on each run, so "the last run's plan" is a choice, not the only right answer. CP-SAT's time includes the greedy run it starts with (decision 14).
+
+## 19. Results come from seeded random problems
+**Context:** The benchmark needs problems to solve, and the choice of problems affects the conclusion.
+
+**Decision:** The published results come only from random problems. `random_problem(n_pieces, seed)` uses its own `random.Random(seed)`, so every problem can be recreated exactly from its size and seed. Each problem has one section, quantity 1 per piece and lengths from 300 to 3000 mm in steps of 50. `hardcoded_problems()` stays in `benchmarks/problems.py` as a pipeline check: its answers are known in advance, so wrong numbers point to a bug in the benchmark.
+
+**Alternatives:** Use hand-made problems for the results. Rejected: they are biased. `greedy_loses` was found by searching for a problem where greedy does badly, so including it would make greedy look worse than it is.
+
+**Trade-off:** One section and quantity 1 are less realistic than a real cut list with repeated pieces, and the length range affects how hard the problems are. Both are stated next to the results.
+
+## 20. Two solvers only, no Best-Fit
+**Context:** Best-Fit Decreasing was planned as a second heuristic next to First-Fit Decreasing.
+
+**Decision:** The project has two solvers: one heuristic (First-Fit Decreasing) and one exact solver (CP-SAT). Best-Fit is dropped.
+
+**Alternatives:** Implement Best-Fit as well. Rejected: on 1D problems it gives almost the same results as First-Fit (the same worst-case guarantee, and usually the same board count or one apart), so a third line would sit on top of greedy's in the charts.
+
+**Trade-off:** None for the benchmark question. If wanted later, Best-Fit would only need a new packing function (it can reuse `_shrink`, decision 7) and one entry in `SOLVERS`.
