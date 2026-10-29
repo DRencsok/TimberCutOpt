@@ -204,3 +204,27 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 **Alternatives:** Implement Best-Fit as well. Rejected: on 1D problems it gives almost the same results as First-Fit (the same worst-case guarantee, and usually the same board count or one apart), so a third line would sit on top of greedy's in the charts.
 
 **Trade-off:** None for the benchmark question. If wanted later, Best-Fit would only need a new packing function (it can reuse `_shrink`, decision 7) and one entry in `SOLVERS`.
+
+## 21. CP-SAT starts from greedy's plan and never returns a worse one
+**Context:** CP-SAT already runs greedy first (decision 14), but it started its search from nothing. On large problems it could run out of time before finding a plan as good as greedy's.
+
+**Decision:** Greedy's plan is passed to CP-SAT as a hint: every piece × board variable and every board × stock length variable gets the value greedy chose. After solving, if CP-SAT's total stock length is still larger than greedy's, greedy's boards are returned for that section.
+
+**Alternatives:**
+- No hint. Rejected: CP-SAT has to find a first good plan by itself, which gets slower as problems grow.
+- Hint only the piece placement. Rejected: a partial hint is harder for the solver to complete, and the stock length of each board is known from greedy anyway.
+
+**Trade-off:** The benchmark showed the same plans with and without the hint on every problem. The hint only changed runtimes: up to ~4.6× faster when CP-SAT proves the best plan before the limit (50 pieces seed 1: 4.65 s → 1.01 s, `shed`: 1.09 s → 0.25 s). Runs that hit the time limit still hit it, because the time goes into *proving* the plan is optimal, which a hint doesn't help with. The extra check makes "never worse than greedy" a guarantee instead of an expectation.
+
+## 22. The benchmark uses a fixed 30 s time limit and fewer repeats
+**Context:** The benchmark is extended to 100, 250 and 500 pieces. With the CLI default of 10 s (decision 16), most CP-SAT runs on large problems stop at the limit, and repeating a run that hits the limit only measures the limit again.
+
+**Decision:** The benchmark gives CP-SAT a fixed 30 s limit for every size. CP-SAT is timed over 2 repeats instead of 5, and greedy keeps 5, because its microsecond timings are the noisy ones. The CLI default stays at 10 s. The time limit is stated next to the results.
+
+**Alternatives:**
+- Keep 10 s. Rejected: large problems would barely get a chance to improve on greedy's starting plan.
+- Scale the limit with problem size. Rejected: the runtime chart would mix different limits, and it is harder to explain than one number.
+- Keep 5 repeats for both. Rejected: at 30 s per timed-out run the benchmark would take far longer without telling us more.
+- 2 repeats for both. Rejected: greedy's runs take microseconds, so its median needs more samples, and they cost nothing.
+
+**Trade-off:** The benchmark results are from a 30 s limit, so a CLI user with the default 10 s may get slightly worse plans on large cut lists. The limit applies per section, so a cut list with several sections can run for a multiple of it (the random problems have one section, decision 19). The benchmark needs its own solver table instead of reusing `SOLVERS`.

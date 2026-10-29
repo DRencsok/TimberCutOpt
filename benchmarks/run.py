@@ -1,16 +1,19 @@
+from functools import partial
 from pathlib import Path
 
 import pandas as pd
 from problems import hardcoded_problems, random_problem
 from timing import timer
 
-from cutopt.get_solver import SOLVERS
+from cutopt.cp_sat import cp_sat
+from cutopt.greedy import greedycut
 from cutopt.metrics import Metrics
 
 SIZES = [10, 25, 50, 100, 250, 500]
 SEEDS = range(3)
-REPEATS = 5
+TIME_LIMIT = 30
 RESULTS_DIR = Path(__file__).parent / "results"
+SOLVERS = {"greedy": (greedycut, 5), "cp_sat": (partial(cp_sat, time_limit=TIME_LIMIT), 2)}
 
 
 def solve_all(problem, labels):
@@ -20,13 +23,13 @@ def solve_all(problem, labels):
     (e.g. {"problem": "tiny"} or {"size": 10, "seed": 0}).
     """
     rows = []
-    for solver_name, solver in SOLVERS.items():
-        runtime_s, plan = timer(solver, problem, REPEATS)
+    for name, (solver, repeats) in SOLVERS.items():
+        runtime_s, plan = timer(solver, problem, repeats)
         metrics = Metrics.from_boards(plan)
         rows.append(
             {
                 **labels,
-                "solver": solver_name,
+                "solver": name,
                 "boards": metrics.board_count,
                 "stock_total": metrics.stock_length_total,
                 "waste_percent": metrics.waste_percent,
