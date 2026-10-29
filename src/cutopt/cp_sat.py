@@ -5,6 +5,7 @@ from collections import defaultdict
 from ortools.sat.python import cp_model
 
 from .greedy import greedycut
+from .metrics import Metrics
 from .models import CutPattern, Problem
 
 
@@ -37,9 +38,11 @@ def cp_sat(problem: Problem, time_limit: float = 10) -> list[CutPattern]:
     # Expand boards by sections and add its pieces
     for section, boards in boards_by_section.items():
         section_pieces = []
-        for board in boards:
+        greedy_board_of = []
+        for board_index, board in enumerate(boards):
             for piece in board.cuts:
                 section_pieces.append(piece)
+                greedy_board_of.append(board_index)
 
         num_boards = len(boards)
         num_pieces = len(section_pieces)
@@ -70,6 +73,21 @@ def cp_sat(problem: Problem, time_limit: float = 10) -> list[CutPattern]:
         for row in use:
             model.add(sum(row) <= 1)
 
+        # Hint for cp_sat so it starts where greedy stopped
+        for p in range(num_pieces):
+            for b in range(num_boards):
+                if b == greedy_board_of[p]:
+                    model.add_hint(x[p][b], 1)
+                else:
+                    model.add_hint(x[p][b], 0)
+
+        for b in range(num_boards):
+            for s in range(num_lengths):
+                if boards[b].stock_length == section_lengths[s]:
+                    model.add_hint(use[b][s], 1)
+                else:
+                    model.add_hint(use[b][s], 0)
+
         # Sum of board's used lengths cannot be bigger than the board's length
         for b in range(num_boards):
             left = sum(
@@ -91,6 +109,11 @@ def cp_sat(problem: Problem, time_limit: float = 10) -> list[CutPattern]:
 
         # No plan found in time, so keep greedy's boards for this section
         if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            result.extend(boards)
+            continue
+
+        # CP-SAT is worse than greedy, so append greedy's boards
+        if solver.value(total) > Metrics.from_boards(boards).stock_length_total:
             result.extend(boards)
             continue
 
