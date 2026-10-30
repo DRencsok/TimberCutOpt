@@ -98,6 +98,24 @@ cutopt solve examples/shed.csv --solver cp_sat --time-limit 30
 When the time runs out, CP-SAT returns the best plan it has found so far, or greedy's plan if
 it found none. `--time-limit` only applies to `cp_sat`; greedy ignores it.
 
+---
+
+## Installation & usage
+
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+
+```bash
+git clone https://github.com/DRencsok/TimberCutOpt.git
+cd TimberCutOpt
+uv sync
+uv run pytest
+uv run cutopt --help
+uv run cutopt solve examples/shed.csv
+```
+
+`uv sync` installs the package with its `dev` tools (pytest, Hypothesis, ruff). The benchmark
+libraries are a separate group, see [Results](#results-greedy-vs-cp-sat).
+`--stock` defaults to `2400,3600,4800,6000` and `--kerf` to `3`.
 
 ---
 
@@ -135,31 +153,40 @@ See [docs/DECISIONS.md](docs/DECISIONS.md) for the full decision log.
 - The CLI's `--stock` lengths apply to every section in the cut list. Different lengths per
   section (e.g. via a stock CSV file) are planned.
 
-
 ---
 
 ## Results: greedy vs CP-SAT
 
-_Planned: benchmark across problem sizes (10–500 pieces) comparing waste %, boards used,
-runtime and optimality gap._
+Each point is the median of 3 random problems (seeds 0–2) per size: one section, one piece
+per length, lengths 300–3000 mm. CP-SAT had a 30 s time limit.
 
----
+![Material waste: Greedy vs CP-SAT](benchmarks/results/waste.png)
 
-## Installation & usage
+CP-SAT wastes less at every size, and the gap is largest on small jobs (4.2 % vs 9.8 % at
+10 pieces). Both solvers used the same number of boards in every run. CP-SAT saves timber
+by choosing shorter stock lengths, typically about 1.2 m per problem. On large cut lists
+that is a small share of the total, so at 250+ pieces greedy is within 0.3 percentage points.
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+![Runtime: Greedy vs CP-SAT](benchmarks/results/runtime.png)
+
+Greedy finishes in under 20 ms even at 500 pieces. CP-SAT solves small problems in under
+0.2 s, but from 50 pieces on it usually runs until the 30 s limit and returns its best plan
+so far, without proof that it is optimal.
+
+**In short:** CP-SAT is worth it on small and medium cut lists, where it saves the most.
+On large ones, greedy gets nearly the same result thousands of times faster.
+
+Reproduce:
 
 ```bash
-git clone https://github.com/DRencsok/TimberCutOpt.git
-cd TimberCutOpt
-uv sync --extra dev
-uv run pytest
-uv run cutopt --help
-uv run cutopt solve examples/shed.csv
+uv sync --group bench
+uv run python benchmarks/run.py
+uv run python benchmarks/plot.py
 ```
 
-`--stock` defaults to `2400,3600,4800,6000`, `--kerf` to `3` and `--solver` to `greedy`.
-`--time-limit` sets CP-SAT's time limit in seconds (default 10) and is ignored by greedy.
+> [!WARNING]
+> `benchmarks/run.py` takes **about 15 minutes**. From 50 pieces on, most CP-SAT runs use the
+> full 30 s limit, and each problem is solved twice.
 
 ---
 
@@ -197,10 +224,10 @@ flowchart LR
 ## Project structure
 
 ```
-src/cutopt/      core package: models, solver, metrics, CSV input, CLI. No web dependencies.
+src/cutopt/      core package: models, solvers, metrics, CSV input, CLI. No web dependencies.
 tests/           pytest unit tests (property-based tests planned)
 examples/        sample cut lists
-benchmarks/      greedy vs CP-SAT comparison (planned)
+benchmarks/      greedy vs CP-SAT comparison
 api/             Django REST API (planned)
 ```
 
@@ -222,7 +249,7 @@ OR-Tools is a required dependency, so both solvers work after a plain install (s
 - [x] Metrics (boards, timber bought, waste %)
 - [x] CLI + example cut lists
 - [x] CP-SAT solver
-- [ ] Benchmark and results charts
+- [x] Benchmark and results charts
 - [ ] Django REST API
 - [ ] Web frontend with visual cutting diagrams
 - [ ] 2D sheet goods (plywood/OSB panels)

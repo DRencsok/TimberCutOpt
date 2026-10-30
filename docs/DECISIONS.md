@@ -177,6 +177,8 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 
 **Trade-off:** One more install flag to remember. `uv sync --extra dev` alone removes the benchmark libraries again.
 
+*Changed by decision 24: `bench` is now a dependency group, installed with `uv sync --group bench`.*
+
 ## 18. Solvers are timed from outside
 **Context:** The benchmark compares runtimes, and a single measurement is noisy (other programs, first-call setup).
 
@@ -228,3 +230,25 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 - 2 repeats for both. Rejected: greedy's runs take microseconds, so its median needs more samples, and they cost nothing.
 
 **Trade-off:** The benchmark results are from a 30 s limit, so a CLI user with the default 10 s may get slightly worse plans on large cut lists. The limit applies per section, so a cut list with several sections can run for a multiple of it (the random problems have one section, decision 19). The benchmark needs its own solver table instead of reusing `SOLVERS`.
+
+## 23. Benchmark charts show the median over seeds, on a log size axis
+**Context:** Each size and solver has 3 runs (one per seed), and the README needs one point per pair.
+
+**Decision:** `benchmarks/plot.py` groups the results by size and solver and takes the median. It draws two PNGs: waste and runtime. Both use a log x-axis with ticks at the benchmarked sizes; the runtime chart also uses a log y-axis, because greedy and CP-SAT are up to six orders of magnitude apart. A dashed line marks the CP-SAT time limit.
+
+**Alternatives:**
+- The mean. Rejected: one timed-out run pulls the 25-piece CP-SAT runtime from ~0.1 s to ~10 s, a value no run actually had.
+- Plot every run as a point. Rejected as cluttered with 3 points per size and solver.
+- One figure with two panels. Rejected: two separate images stay readable on GitHub and allow text between them.
+
+**Trade-off:** The median hides the worst run. One 25-piece CP-SAT run hit the 30 s limit, but the chart shows ~0.1 s. A min–max band could show the spread later.
+
+
+## 24. Dev and benchmark tools are dependency groups, not extras
+**Context:** `dev` and `bench` were optional extras (decision 17). Extras are published with the package, so a user could run `pip install cutopt[dev]`, which makes no sense: these tools are only for working on the repository, and `benchmarks/` isn't even in the wheel. `uv sync` also removes everything not requested, so `uv sync --extra bench` uninstalled pytest and ruff.
+
+**Decision:** `dev` and `bench` are `[dependency-groups]` (PEP 735). They are never published. uv installs `dev` by default, so `uv sync` sets up a contributor environment and `uv sync --group bench` adds the benchmark libraries without removing the dev tools. `ipykernel` was removed from `dev`: it was only used for local scratch work and pulls in all of IPython. Version floors are loose (`pandas>=2.2`, `matplotlib>=3.8`) like the core dependencies; `uv.lock` pins the exact versions.
+
+**Alternatives:** Keep the extras and document `uv sync --all-extras`. Rejected: it fixes the uninstall surprise but still publishes extras no user needs.
+
+**Trade-off:** Dependency groups need a recent installer (uv, or pip 25.1+ with `--group`). Older pip can't install them, which only affects contributors, not users of the package.
