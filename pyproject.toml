@@ -12,13 +12,20 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    {include-group = "api"},
     "pytest>=8",
     "hypothesis>=6",
     "ruff>=0.6",
+    "pytest-django>=4.14.0",
 ]
 bench = [
     "matplotlib>=3.8",
     "pandas>=2.2",
+]
+api = [
+    "django>=6.1.2",
+    "djangorestframework>=3.18.3",
+    "drf-spectacular>=0.30.0",
 ]
 
 [project.scripts]

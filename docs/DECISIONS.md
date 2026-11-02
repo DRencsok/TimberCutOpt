@@ -252,3 +252,15 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 **Alternatives:** Keep the extras and document `uv sync --all-extras`. Rejected: it fixes the uninstall surprise but still publishes extras no user needs.
 
 **Trade-off:** Dependency groups need a recent installer (uv, or pip 25.1+ with `--group`). Older pip can't install them, which only affects contributors, not users of the package.
+
+## 25. The API's time limit is a budget for the whole request
+**Context:** `cp_sat` applies its time limit to each section separately (decision 22). The CLI runs on the user's own machine, so it has no upper limit. The API runs on a shared public server, where a cut list with several sections could keep a worker busy for a multiple of the limit, longer than the server's request timeout (gunicorn's default is 30 s).
+
+**Decision:** In the API, `time_limit` is the budget for the whole request, at most 20 s. The view divides it equally between the sections and passes that share to `cp_sat`. The ceiling lives in the API serializer, not in the core or the CLI.
+
+**Alternatives:**
+- Keep the time limit per section, as in the CLI. Rejected: the runtime of a request would grow with the number of sections, which a client can't predict and the server can't bound.
+- Cap the number of sections instead. Rejected: it rejects valid cut lists to work around a timing problem.
+- Give each section a share proportional to its number of pieces, or pass unused time on to the next section. Rejected for now: both need changes to `cp_sat` in the core, and an equal split is easy to explain.
+
+**Trade-off:** An equal split is not the best use of the budget. A small section that finishes early leaves its time unused, while a large section might have used it. The same `time_limit` value means different things in the CLI (per section) and the API (per request), which the API documentation has to state. The total runtime is slightly above the budget, because greedy runs first and the request has to be parsed and answered.

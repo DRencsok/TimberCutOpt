@@ -10,3 +10,4 @@ build/
 plan.json
 .vscode/
 scratch.py
+api/db.sqlite3
