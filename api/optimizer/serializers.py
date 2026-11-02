@@ -31,3 +31,36 @@ class SolveRequestSerializer(serializers.Serializer):
         if not value:
             raise serializers.ValidationError("Your cut list is empty. Add at least one piece")
         return value
+
+
+class CutSerializer(serializers.Serializer):
+    label = serializers.CharField()
+    length = serializers.IntegerField()
+
+
+class BoardSerializer(serializers.Serializer):
+    section = serializers.CharField()
+    stock_length = serializers.IntegerField()
+    cuts = CutSerializer(many=True)
+    offcut = serializers.IntegerField()
+    used_length = serializers.IntegerField()
+
+
+class ShoppingListItemSerializer(serializers.Serializer):
+    section = serializers.CharField()
+    length = serializers.IntegerField()
+    quantity = serializers.IntegerField()
+
+
+class SummarySerializer(serializers.Serializer):
+    board_count = serializers.IntegerField()
+    stock_length_total = serializers.IntegerField()
+    piece_length_total = serializers.IntegerField()
+    waste = serializers.IntegerField()
+    waste_percent = serializers.FloatField()
+
+class SolveResponseSerializer(serializers.Serializer):
+    solver = serializers.ChoiceField(choices=list(SOLVERS))
+    boards = BoardSerializer(many=True)
+    shopping_list = ShoppingListItemSerializer(many=True)
+    summary = SummarySerializer()

@@ -8,7 +8,7 @@ from cutopt.io import stock_for_sections
 from cutopt.metrics import Metrics
 from cutopt.models import Piece, Problem
 
-from .serializers import SolveRequestSerializer
+from .serializers import SolveRequestSerializer, SolveResponseSerializer
 
 
 class SolveView(APIView):
@@ -32,8 +32,16 @@ class SolveView(APIView):
         except CutOptError as error:
             return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({
-                "board_count": metrics.board_count,
-                "waste_percent": metrics.waste_percent,
-                "stock_length_total": metrics.stock_length_total,
-            })
+            shopping_list = []
+            for (section, length), qty in sorted(metrics.shopping_list.items()):
+                shopping_list.append({"section": section, "length": length, "quantity": qty})
+
+            response = SolveResponseSerializer(
+                {
+                    "solver": data["solver"],
+                    "boards": boards,
+                    "shopping_list": shopping_list,
+                    "summary": metrics,
+                }
+            )
+            return Response(response.data)
