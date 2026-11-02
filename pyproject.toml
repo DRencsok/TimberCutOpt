@@ -40,6 +40,8 @@ packages = ["src/cutopt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["api"]
+DJANGO_SETTINGS_MODULE = "config.settings"
 
 [tool.ruff]
 line-length = 100
