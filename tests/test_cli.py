@@ -74,23 +74,27 @@ def test_kerf_forces_a_second_board(tmp_path):
     assert "x2" not in result.output
     assert "50.00" in result.output
 
+
 def test_time_limit_passes(tmp_path):
     cut_list = write_cut_list(tmp_path, TWO_HALVES)
     result = runner.invoke(app, ["solve", cut_list])
-    assert result.exit_code == 0, result.output 
+    assert result.exit_code == 0, result.output
+
 
 def test_negative_time_limit(tmp_path):
     cut_list = write_cut_list(tmp_path, TWO_HALVES)
-    result = runner.invoke(app, ["solve", cut_list,"--solver", "cp_sat", "--time-limit", "-1"])
+    result = runner.invoke(app, ["solve", cut_list, "--solver", "cp_sat", "--time-limit", "-1"])
     assert result.exit_code == 2, result.output
     assert "time-limit" in result.output
 
+
 def test_zero_time_limit(tmp_path):
     cut_list = write_cut_list(tmp_path, TWO_HALVES)
-    result = runner.invoke(app, ["solve", cut_list,"--solver", "cp_sat", "--time-limit", "0"])
-    assert result.exit_code == 0, result.output 
+    result = runner.invoke(app, ["solve", cut_list, "--solver", "cp_sat", "--time-limit", "0"])
+    assert result.exit_code == 0, result.output
+
 
 def test_greedy_with_time_limit(tmp_path):
     cut_list = write_cut_list(tmp_path, TWO_HALVES)
-    result = runner.invoke(app, ["solve", cut_list,"--solver", "greedy", "--time-limit", "1"])
-    assert result.exit_code == 0, result.output 
+    result = runner.invoke(app, ["solve", cut_list, "--solver", "greedy", "--time-limit", "1"])
+    assert result.exit_code == 0, result.output
