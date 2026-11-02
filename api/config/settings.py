@@ -30,6 +30,16 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Timber Cut Optimizer API",
+    "DESCRIPTION": "Turn a timber cut list into a cutting plan with minimal waste",
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
 
 CUTOPT_MAX_TIME_LIMIT = float(os.environ.get("CUTOPT_MAX_TIME_LIMIT", 20))
 

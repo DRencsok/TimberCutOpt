@@ -1,3 +1,4 @@
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,6 +13,43 @@ from .serializers import SolveRequestSerializer, SolveResponseSerializer
 
 
 class SolveView(APIView):
+    @extend_schema(
+        summary="Optimise a cut list",
+        request=SolveRequestSerializer,
+        responses={200: SolveResponseSerializer, 400: OpenApiResponse(description="Invalid input")},
+        examples=[
+            OpenApiExample(
+                "Garden shed",
+                value={
+                    "pieces": [
+                        {
+                            "label": "wall stud",
+                            "length": 1950,
+                            "quantity": 16,
+                            "section": "47x100 C24",
+                        },
+                        {
+                            "label": "nogging",
+                            "length": 550,
+                            "quantity": 12,
+                            "section": "47x100 C24",
+                        },
+                        {
+                            "label": "rafter",
+                            "length": 2150,
+                            "quantity": 7,
+                            "section": "47x150 C24",
+                        },
+                    ],
+                    "stock_lengths": [2400, 3600, 4800, 6000],
+                    "kerf": 3,
+                    "solver": "cp_sat",
+                    "time_limit": 10,
+                },
+                request_only=True,
+            )
+        ],
+    )
     def post(self, request):
         serializer = SolveRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

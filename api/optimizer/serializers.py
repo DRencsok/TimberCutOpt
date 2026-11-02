@@ -59,6 +59,7 @@ class SummarySerializer(serializers.Serializer):
     waste = serializers.IntegerField()
     waste_percent = serializers.FloatField()
 
+
 class SolveResponseSerializer(serializers.Serializer):
     solver = serializers.ChoiceField(choices=list(SOLVERS))
     boards = BoardSerializer(many=True)
