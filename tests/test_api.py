@@ -2,6 +2,7 @@ import random
 from time import perf_counter
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -9,6 +10,7 @@ from cutopt.get_solver import SOLVERS
 
 client = APIClient()
 URL = reverse("solve")
+FRONTEND = "https://app.example.com"
 
 
 def test_shed_with_greedy_returns_plan():
@@ -193,6 +195,7 @@ def test_detail_error():
     assert "rafter" in errors["detail"]
 
 
+@pytest.mark.slow
 def test_time_limit_is_a_budget_for_the_whole_request():
     # 60 different random lengths per section: too hard for CP-SAT to prove optimal in 1s
     rng = random.Random(0)
@@ -211,6 +214,23 @@ def test_time_limit_is_a_budget_for_the_whole_request():
     assert elapsed < 3, f"took {elapsed:.2f} s"
     assert elapsed > 1.5, f"took {elapsed:.2f} s"
 
+
 def test_get_is_not_allowed():
     response = client.get(URL)
     assert response.status_code == 405
+
+
+@override_settings(CORS_ALLOWED_ORIGINS=[FRONTEND])
+def test_cors_allows_frontend_origin():
+    # The preflight a browser sends before a JSON POST from another origin
+    response = client.options(URL, HTTP_ORIGIN=FRONTEND, HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST")
+    assert response["Access-Control-Allow-Origin"] == FRONTEND
+
+
+@override_settings(CORS_ALLOWED_ORIGINS=[FRONTEND])
+def test_cors_rejects_other_origin():
+    response = client.options(
+        URL, HTTP_ORIGIN="https://evil.example.com", HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST"
+    )
+    assert "Access-Control-Allow-Origin" not in response
+    

@@ -250,7 +250,7 @@ OR-Tools is a required dependency, so both solvers work after a plain install (s
 - [x] CLI + example cut lists
 - [x] CP-SAT solver
 - [x] Benchmark and results charts
-- [ ] Django REST API
+- [x] Django REST API
 - [ ] Deployment
 - [ ] Web frontend with visual cutting diagrams
 - [ ] 2D sheet goods (plywood/OSB panels)

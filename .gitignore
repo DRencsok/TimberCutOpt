@@ -11,3 +11,4 @@ plan.json
 .vscode/
 scratch.py
 api/db.sqlite3
+api/staticfiles/

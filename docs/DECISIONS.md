@@ -264,3 +264,66 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 - Give each section a share proportional to its number of pieces, or pass unused time on to the next section. Rejected for now: both need changes to `cp_sat` in the core, and an equal split is easy to explain.
 
 **Trade-off:** An equal split is not the best use of the budget. A small section that finishes early leaves its time unused, while a large section might have used it. The same `time_limit` value means different things in the CLI (per section) and the API (per request), which the API documentation has to state. The total runtime is slightly above the budget, because greedy runs first and the request has to be parsed and answered.
+
+## 26. API input is capped
+**Context:** The API is public. `quantity` is expanded into single pieces before solving, and the CP-SAT model grows with pieces × boards. Without limits, a single request with `"quantity": 1000000000` uses up a worker's memory or blocks it for a long time, and the time limit doesn't help, because expanding the pieces and building the model happen before the solver starts.
+
+**Decision:** The API serializers reject requests with more than 500 pieces in total after expanding quantities, more than 10 stock lengths, lengths over 20000 mm or a kerf over 20. The piece and stock-length caps are settings (`CUTOPT_MAX_PIECES`, `CUTOPT_MAX_STOCK_COUNT`) read from environment variables, so they can be changed on the server without a code change. Like the time limit, the caps live in the API, not in the core or the CLI.
+
+**Alternatives:**
+- No caps, rely on the time limit. Rejected: the time limit doesn't cover expanding the pieces or building the model.
+- Caps in the core. Rejected: the CLI runs on the user's own machine, where a large job only costs the user's own time.
+- A lower cap for CP-SAT than for greedy. Postponed until CP-SAT is optimised and its runtime measured.
+
+**Trade-off:** Very large real cut lists are rejected and would have to be split into several requests. The limits are estimates, not measurements.
+
+## 27. Requests are throttled per IP
+**Context:** The caps (decision 26) limit the cost of one request, but not how many requests arrive. One client could keep every worker busy by sending CP-SAT requests one after another.
+
+**Decision:** DRF's `AnonRateThrottle` allows 20 requests per minute per IP address, set through `CUTOPT_THROTTLE_RATE`. Further requests get `429 Too Many Requests` with a `Retry-After` header. `NUM_PROXIES` is read from `CUTOPT_NUM_PROXIES`, so the real client IP is taken from the end of `X-Forwarded-For` behind the host's proxy. It is 0 locally and must match the number of proxies in production. Tests clear the cache before each test, so the throttle never blocks them.
+
+**Alternatives:**
+- No throttle. Rejected, for the reason above.
+- Throttle at the host or a CDN such as Cloudflare. Rejected for now: not every host offers it, and it can't be tested locally.
+- A separate, stricter rate for CP-SAT. Postponed, like the CP-SAT cap in decision 26.
+
+**Trade-off:**
+- The throttle counts requests, not CPU time, so 20 CP-SAT requests cost far more than 20 greedy ones.
+- The counters live in each gunicorn worker's local memory cache, so the real limit is about workers × rate. A shared cache (Redis) would fix this.
+- Users behind one shared IP (an office, a school) share one limit.
+- It protects against one client, not against a distributed attack from many IPs.
+- A wrong `NUM_PROXIES` either makes all users share one limit (too low) or lets clients fake their IP (too high).
+
+## 28. Production settings come from environment variables with safe defaults
+**Context:** The same `settings.py` runs locally, in the tests and in production. 
+
+**Decision:**
+- `DEBUG` is off unless `DJANGO_DEBUG=True` is set.
+- With `DEBUG` off, settings refuse to load without `DJANGO_SECRET_KEY` (`ImproperlyConfigured`).
+- `ALLOWED_HOSTS` comes from `DJANGO_ALLOWED_HOSTS`, defaulting to `localhost,127.0.0.1`.
+- Django trusts the host proxy's `X-Forwarded-Proto` header, and cookies are HTTPS-only.
+- The HTTPS redirect has its own variable, `DJANGO_SECURE_SSL_REDIRECT`, instead of following `DEBUG`, because tests run with `DEBUG=False` and every test request would get a 301.
+- Tests get a fake secret key from `pytest-env` in `pyproject.toml`. It can't be set in `conftest.py`, because pytest-django loads the settings before it reads `conftest.py`.
+- HSTS is left out until the API has its own domain.
+
+**Alternatives:**
+- Separate `settings/dev.py` and `settings/prod.py`. Rejected: more files for a handful of differences.
+- `django-environ`. Rejected: another dependency for what `os.environ` already does.
+- `DEBUG` on by default. Rejected: a forgotten variable in production would show debug pages, with settings and local variables, to anyone.
+
+**Trade-off:** Local development needs `DJANGO_DEBUG=True` set in the terminal, and running production commands locally (`check --deploy`, `collectstatic`) needs a secret key. A missing variable in production stops the app at startup instead of failing silently later, which is intended.
+
+## 29. Gunicorn and whitenoise serve the API
+**Context:** `runserver` is for development only. With `DEBUG` off, Django serves no static files, so the admin and the browsable API would load without their CSS and JavaScript.
+
+**Decision:**
+- The API runs on gunicorn with 2 sync workers and a 60 s timeout. The timeout is longer than the 20 s request budget (decision 25) plus greedy and overhead, and replaces the 30 s default mentioned there.
+- Gunicorn is installed only on non-Windows systems (`sys_platform != 'win32'`), because it doesn't run on Windows. Locally it is run through Docker.
+- Whitenoise serves the static files from the app itself. `collectstatic` copies them into `api/staticfiles/` (not committed), with gzip and brotli versions written by `CompressedStaticFilesStorage`.
+
+**Alternatives:**
+- nginx in front of gunicorn for static files. Rejected: one more service to configure and run.
+- S3 or a CDN for static files. Rejected: too much setup for a few admin and DRF files.
+- An ASGI server such as uvicorn. Rejected: the API is synchronous and CPU-bound, so async brings nothing.
+
+**Trade-off:** Only 2 requests are handled at once, and a third waits in the queue. More workers need a bigger plan (`WEB_CONCURRENCY`). Gunicorn can't be tried on Windows without Docker.

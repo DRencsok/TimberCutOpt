@@ -17,6 +17,7 @@ dev = [
     "hypothesis>=6",
     "ruff>=0.6",
     "pytest-django>=4.14.0",
+    "pytest-env>=1.8.4",
 ]
 bench = [
     "matplotlib>=3.8",
@@ -24,8 +25,11 @@ bench = [
 ]
 api = [
     "django>=6.1.2",
+    "django-cors-headers>=4.9.0",
     "djangorestframework>=3.18.3",
     "drf-spectacular>=0.30.0",
+    "gunicorn>=26.2.0 ; sys_platform != 'win32'",
+    "whitenoise>=6.12.0",
 ]
 
 [project.scripts]
@@ -42,6 +46,9 @@ packages = ["src/cutopt"]
 testpaths = ["tests"]
 pythonpath = ["api"]
 DJANGO_SETTINGS_MODULE = "config.settings"
+markers = ["slow: takes several seconds"]
+env = ["DJANGO_SECRET_KEY=test-only-key"]
+
 
 [tool.ruff]
 line-length = 100

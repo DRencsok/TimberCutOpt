@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,16 +24,31 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-dev-only")
+DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+if not DEBUG and SECRET_KEY == "django-insecure-dev-only":
+    raise ImproperlyConfigured("Set DJANGO_SECRET_KEY in production")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+CORS_ALLOWED_ORIGINS = [
+    origin for origin in os.environ.get("DJANGO_CORS_ALLOWED_ORIGINS", "").split(",") if origin
+]
+CORS_URLS_REGEX = r"^/api/.*$"
+
+# Https handled by the host's proxy, which forwards plain HTTP to Django
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SECURE_SSL_REDIRECT", "False") == "True"
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 
 # Application definition
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {"anon": os.environ.get("CUTOPT_THROTTLE_RATE", "20/min")},
+    "NUM_PROXIES": int(os.environ.get("CUTOPT_NUM_PROXIES", 0)),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -42,6 +59,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 CUTOPT_MAX_TIME_LIMIT = float(os.environ.get("CUTOPT_MAX_TIME_LIMIT", 20))
+CUTOPT_MAX_PIECES = int(os.environ.get("CUTOPT_MAX_PIECES", 500))
+CUTOPT_MAX_STOCK_COUNT = int(os.environ.get("CUTOPT_MAX_STOCK_COUNT", 10))
 
 
 INSTALLED_APPS = [
@@ -54,10 +73,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "optimizer",
     "drf_spectacular",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -133,12 +155,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
+
