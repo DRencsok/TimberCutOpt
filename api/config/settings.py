@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+from importlib.metadata import version
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -54,7 +55,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Timber Cut Optimizer API",
     "DESCRIPTION": "Turn a timber cut list into a cutting plan with minimal waste",
-    "VERSION": "0.1.0",
+    "VERSION": version("cutopt"),
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
@@ -161,4 +162,3 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
-

@@ -1,6 +1,6 @@
 [project]
 name = "cutopt"
-version = "0.1.0"
+version = "1.0.0"
 description = "Timber cut list optimizer: greedy vs CP-SAT for the 1D cutting stock problem"
 readme = "README.md"
 requires-python = ">=3.12"

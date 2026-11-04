@@ -2,8 +2,7 @@
 
 **Turns a construction cut list into a cutting plan that wastes as little timber as possible.**
 Includes a fast greedy heuristic and an exact CP-SAT model, plus a benchmark comparing the two.
-
-> 🚧 Work in progress. See the [Roadmap](#roadmap) for current status.
+Use it from the command line or through a REST API.
 
 ---
 
@@ -119,6 +118,47 @@ libraries are a separate group, see [Results](#results-greedy-vs-cp-sat).
 
 ---
 
+## REST API
+
+`POST /api/solve/` takes the same cut list as JSON and returns the boards, the shopping list
+and a summary. Interactive docs (Swagger UI) are at `/api/docs/`, and the OpenAPI schema is at
+`/api/schema/`.
+
+```bash
+curl -X POST http://localhost:8000/api/solve/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pieces": [
+      {"label": "wall stud", "length": 1950, "quantity": 16, "section": "47x100 C24"},
+      {"label": "rafter", "length": 2150, "quantity": 7, "section": "47x150 C24"}
+    ],
+    "stock_lengths": [2400, 3600, 4800, 6000],
+    "kerf": 3,
+    "solver": "cp_sat",
+    "time_limit": 10
+  }'
+```
+
+Only `pieces` is required. The other fields default to the values above, except `solver`,
+which defaults to `greedy`. `time_limit` is the total for the whole request, split equally
+between sections. The API limits a request to 500 pieces and a 20 s time limit, and allows
+20 requests per minute per client.
+
+Run it locally with Docker:
+
+```bash
+docker build -t timbercut-api .
+docker run --rm -p 8000:8000 -e DJANGO_SECRET_KEY=local-dev-key -e DJANGO_ALLOWED_HOSTS=localhost timbercut-api
+```
+
+Or without Docker, in development mode:
+
+```bash
+DJANGO_DEBUG=True uv run python api/manage.py runserver
+```
+
+---
+
 ## How it works
 
 ### Modelling decisions
@@ -150,8 +190,8 @@ See [docs/DECISIONS.md](docs/DECISIONS.md) for the full decision log.
 
 ### Known limitations
 - Stock quantity limits are not enforced yet. Unlimited supply of every stock length is assumed.
-- The CLI's `--stock` lengths apply to every section in the cut list. Different lengths per
-  section (e.g. via a stock CSV file) are planned.
+- The stock lengths (`--stock` in the CLI, `stock_lengths` in the API) apply to every section
+  in the cut list. Different lengths per section (e.g. via a stock CSV file) are planned.
 
 ---
 
@@ -195,11 +235,11 @@ uv run python benchmarks/plot.py
 ```mermaid
 flowchart LR
     CSV[/"cut list (CSV)"/] --> CLI
-    JSON[/"JSON request"/] -.-> API
+    JSON[/"JSON request"/] --> API
 
     subgraph Front doors
         CLI["cli.py<br/>cutopt solve"]
-        API["api/<br/>Django REST (planned)"]
+        API["api/<br/>Django REST API"]
     end
 
     subgraph Core["cutopt core (no web dependencies)"]
@@ -211,7 +251,7 @@ flowchart LR
     end
 
     CLI --> IO --> MODELS
-    API -.-> MODELS
+    API --> MODELS
     MODELS --> GREEDY
     MODELS --> CPSAT
     GREEDY --> METRICS
@@ -225,10 +265,11 @@ flowchart LR
 
 ```
 src/cutopt/      core package: models, solvers, metrics, CSV input, CLI. No web dependencies.
-tests/           pytest unit tests (property-based tests planned)
+api/             Django REST API (Django REST Framework, OpenAPI docs)
+tests/           pytest tests for the core, the CLI and the API
 examples/        sample cut lists
 benchmarks/      greedy vs CP-SAT comparison
-api/             Django REST API (planned)
+Dockerfile       production image for the API (gunicorn + WhiteNoise)
 ```
 
 The optimizer core is a plain Python package. The CLI, the REST API and the benchmarks are
@@ -243,14 +284,11 @@ OR-Tools is a required dependency, so both solvers work after a plain install (s
 
 ## Roadmap
 
-- [x] Core data models (pieces, stock, sections, kerf)
-- [x] First-Fit Decreasing solver with exact kerf and per-section solving
-- [x] Shrink each board to the shortest stock length that fits
-- [x] Metrics (boards, timber bought, waste %)
-- [x] CLI + example cut lists
-- [x] CP-SAT solver
-- [x] Benchmark and results charts
-- [x] Django REST API
-- [ ] Deployment
-- [ ] Web frontend with visual cutting diagrams
-- [ ] 2D sheet goods (plywood/OSB panels)
+Planned after v1.0:
+
+- Web frontend with visual cutting diagrams
+- User accounts, so cut lists and plans can be saved
+- CI/CD with GitHub Actions: lint and tests on every push, automatic deploys
+- Stock quantity limits and different stock lengths per section
+- 2D sheet goods (plywood/OSB panels)
+
