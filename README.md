@@ -4,6 +4,9 @@
 Includes a fast greedy heuristic and an exact CP-SAT model, plus a benchmark comparing the two.
 Use it from the command line or through a REST API.
 
+**Try it live:** [timbercutopt.onrender.com/api/docs](https://timbercutopt.onrender.com/api/docs/)
+(free hosting: the first request after a quiet period can take about 30 s while the server wakes up)
+
 ---
 
 ## The problem
@@ -121,11 +124,17 @@ libraries are a separate group, see [Results](#results-greedy-vs-cp-sat).
 ## REST API
 
 `POST /api/solve/` takes the same cut list as JSON and returns the boards, the shopping list
-and a summary. Interactive docs (Swagger UI) are at `/api/docs/`, and the OpenAPI schema is at
-`/api/schema/`.
+and a summary.
+
+The API is live at https://timbercutopt.onrender.com. The easiest way to try it is the
+[interactive docs (Swagger UI)](https://timbercutopt.onrender.com/api/docs/): open
+`POST /api/solve/`, click **Try it out**, then **Execute**. The OpenAPI schema is at
+[`/api/schema/`](https://timbercutopt.onrender.com/api/schema/).
+
+From a terminal (bash, macOS/Linux or Git Bash on Windows):
 
 ```bash
-curl -X POST http://localhost:8000/api/solve/ \
+curl -X POST https://timbercutopt.onrender.com/api/solve/ \
   -H "Content-Type: application/json" \
   -d '{
     "pieces": [
@@ -156,6 +165,8 @@ Or without Docker, in development mode:
 ```bash
 DJANGO_DEBUG=True uv run python api/manage.py runserver
 ```
+
+Either way, the docs are then at http://localhost:8000/api/docs/.
 
 ---
 
