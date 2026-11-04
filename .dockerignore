@@ -1,0 +1,16 @@
+.venv/
+.git/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.vscode/
+api/db.sqlite3
+api/staticfiles/
+benchmarks/
+tests/
+docs/
+examples/
+scratch.py
+plan.json
+.env
