@@ -1,5 +1,7 @@
 # Timber Cut Optimizer
 
+[![CI](https://github.com/DRencsok/TimberCutOpt/actions/workflows/ci.yml/badge.svg)](https://github.com/DRencsok/TimberCutOpt/actions/workflows/ci.yml)
+
 **Turns a construction cut list into a cutting plan that wastes as little timber as possible.**
 Includes a fast greedy heuristic and an exact CP-SAT model, plus a benchmark comparing the two.
 Use it from the command line or through a REST API.
