@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from rich.text import Text
 from typer.testing import CliRunner
 
 from cutopt.cli import app
@@ -85,7 +86,7 @@ def test_negative_time_limit(tmp_path):
     cut_list = write_cut_list(tmp_path, TWO_HALVES)
     result = runner.invoke(app, ["solve", cut_list, "--solver", "cp_sat", "--time-limit", "-1"])
     assert result.exit_code == 2, result.output
-    assert "time-limit" in result.output
+    assert "time-limit" in Text.from_ansi(result.output).plain
 
 
 def test_zero_time_limit(tmp_path):
