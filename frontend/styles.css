@@ -1,0 +1,1013 @@
+/* ==========================================================================
+   TimberCut styles: the "Tape" direction
+
+   The idea: the page is a strip of yellow measuring tape. Black ink, cream
+   paper for anything you can write on or cut from, dark red for the numerals
+   on the tape and for problems. Nothing is round, nothing is shaded, and
+   nothing glows. Hierarchy comes from two typefaces, spacing and three line
+   weights.
+
+   STRUCTURE (keep this order when adding rules)
+     1. Tokens      every colour, size, space and line weight, on :root
+     2. Base        fonts, reset, element defaults
+     3. Layout      page frame and the two columns
+     4. Components  one block per component, in page order
+     5. States and utilities   invalid, disabled, focus, hidden
+
+   NAMING: BEM
+     .block            a component                    .board
+     .block__element   a part of it                   .board__seg
+     .block--modifier  a variant of block or element  .board__seg--kerf
+   Three blocks are shared typography and may be combined with any element:
+   .label (small captions), .heading (condensed subheads) and .statement
+   (the big sentences). .ruled is the heavy rule on top of a block.
+
+   RULES OF THE HOUSE
+     - Values come from tokens. A raw number in a rule is a bug, except 0,
+       100% and the ratios inside calc().
+     - Selectors are classes (plus pseudo-classes and attributes for state).
+       No ids, no element selectors after the Base part, no !important.
+     - JavaScript hooks are ids and data- attributes, never these classes.
+
+   BREAKPOINTS: mobile first, two steps. Media and container queries cannot
+   read custom properties, so the numbers are written out where they are used:
+     30rem (480 px)   a cut list row fits on one line; the diagram gets wider
+                      side columns and full-size tape numerals
+     70rem (1120 px)  form and results sit side by side; below this the
+                      boards would be drawn too small next to the form
+   Plus two container queries on the board pieces, which hide text by the
+   width of the piece itself, not of the screen.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. TOKENS
+   ========================================================================== */
+
+:root {
+  /* Colour: the whole palette. */
+  --color-tape: #F6C400;        /* the page */
+  --color-ink: #000;            /* text, lines, solid buttons */
+  --color-paper: #FFF8E1;       /* inputs and timber */
+  --color-alarm: #8F0A1A;       /* tape numerals, invalid borders */
+  --color-alarm-deep: #7A0815;  /* error text, hover; 6.8:1 on the tape */
+
+  /* Type. Barlow for reading, Barlow Condensed for anything that shouts. */
+  --font-text: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* The sizes of the Tape reference, unchanged. */
+  --text-1: 0.8125rem;  /* 13  piece names on a board */
+  --text-2: 0.875rem;   /* 14  labels */
+  --text-3: 0.9375rem;  /* 15  lengths on a board */
+  --text-4: 1rem;       /* 16  body, inputs */
+  --text-5: 1.25rem;    /* 20  tape numerals */
+  --text-6: 1.375rem;   /* 22  subheads */
+  --text-7: 1.5rem;     /* 24  stack count, main button */
+  --text-8: 1.625rem;   /* 26  form heading */
+  --text-9: 2.125rem;   /* 34  wordmark */
+  --text-10: 2.25rem;   /* 36  state statements */
+  --text-display: clamp(2.125rem, 4.2vw, 3.5rem);  /* 34 to 56, results headline */
+
+  --leading-body: 1.4;
+  --leading-heading: 1.1;
+  --leading-display: 1.05;
+  --leading-flat: 1;
+
+  /* Space: one scale for every gap, padding and margin. */
+  --space-1: 0.125rem;  /*  2 */
+  --space-2: 0.25rem;   /*  4 */
+  --space-3: 0.375rem;  /*  6 */
+  --space-4: 0.5rem;    /*  8 */
+  --space-5: 0.75rem;   /* 12 */
+  --space-6: 1rem;      /* 16 */
+  --space-7: 1.25rem;   /* 20 */
+  --space-8: 1.5rem;    /* 24 */
+  --space-9: 2.5rem;    /* 40 */
+  --space-10: 3rem;     /* 48 */
+
+  /* Lines: three weights, in px so they stay crisp at any text size. */
+  --line-hair: 1px;   /* minor tape ticks */
+  --line: 2px;        /* every box */
+  --line-heavy: 3px;  /* rules, focus ring, invalid border */
+
+  /* Sizes of things you touch or read as objects. */
+  --size-control: 2.75rem;  /* 44 px: inputs and the smallest touch target */
+  --size-button: 3rem;
+  --size-cta: 3.5rem;
+  --size-mark: 1.25rem;     /* radio mark */
+  --size-mark-fill: 0.375rem;
+  --size-board: 3.375rem;   /* height of a drawn board */
+  --size-edge: 0.375rem;    /* a board lying under the top one in a stack */
+  --size-swatch: 1.75rem;
+  --tick-minor: 0.5625rem;
+  --tick-mid: 1.0625rem;
+  --tick-major: 1.625rem;
+
+  /* Widths. */
+  --page-pad: clamp(1rem, 3vw, 2.5rem);
+  --page-max: 90rem;
+  --measure-form: 28.75rem;
+  --measure-headline: 24ch;
+  --measure-text: 34rem;
+  --width-length: 4.75rem;   /* fits "20000" */
+  --width-qty: 3.5rem;       /* fits "500" */
+  --width-section: 8.5rem;   /* fits "47x100 C24" beside the datalist arrow */
+  --width-add: 9rem;
+
+  /* Responsive tokens: phone values here, changed once at 30rem below. */
+  --plan-count: 1.875rem;    /* column for "3×" */
+  --plan-offcut: 2.875rem;   /* column for the offcut length */
+  --plan-gap: var(--space-3);
+  --kerf-min: var(--line-hair);
+  --text-tick: var(--text-2);
+}
+
+@media (min-width: 30rem) {
+  :root {
+    --plan-count: 2.75rem;
+    --plan-offcut: 4.5rem;
+    --plan-gap: var(--space-5);
+    --kerf-min: var(--line);
+    --text-tick: var(--text-5);
+  }
+}
+
+
+/* ==========================================================================
+   2. BASE
+   ========================================================================== */
+
+/* The fonts are served from this folder: no third-party request, and the
+   page still works offline in a workshop. Latin subset, SIL Open Font
+   License (fonts/OFL.txt). */
+@font-face {
+  font-family: "Barlow";
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/barlow-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Barlow";
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/barlow-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Barlow";
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/barlow-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/barlow-condensed-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/barlow-condensed-700.woff2") format("woff2");
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Stops iOS from enlarging text in landscape, which breaks the diagram. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body,
+h1, h2, h3,
+p, ul, ol,
+fieldset, legend {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-tape);
+  color: var(--color-ink);
+  font-family: var(--font-text);
+  font-size: var(--text-4);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+}
+
+h1, h2, h3 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+fieldset {
+  /* Fieldsets refuse to shrink below their content without this. */
+  min-width: 0;
+  border: 0;
+}
+
+/* Form controls do not inherit type by default, and iOS rounds them. */
+input,
+button {
+  margin: 0;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+}
+
+/* One focus ring for everything: heavy black, set off from the control so
+   it also shows around a black button. */
+:focus-visible,
+.chip__input:focus-visible + .chip__face {
+  outline: var(--line-heavy) solid var(--color-ink);
+  outline-offset: var(--space-1);
+}
+
+
+/* ==========================================================================
+   3. LAYOUT
+   ========================================================================== */
+
+.page {
+  max-width: var(--page-max);
+  min-height: 100vh;
+  padding: var(--space-8) var(--page-pad) var(--space-10);
+}
+
+/* One column on a phone: the form first, the answer under the button that
+   asks for it. */
+.workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-9);
+  align-items: start;
+}
+
+@media (min-width: 70rem) {
+  .workbench {
+    grid-template-columns: minmax(0, var(--measure-form)) minmax(0, 1fr);
+  }
+}
+
+.planner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  /* Also holds between 30rem and 70rem, where the column is the full page
+     wide and the inputs would stretch out of all proportion. */
+  max-width: var(--measure-form);
+}
+
+.planner__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.planner__legend {
+  /* A legend is not a flex item, so the group's gap skips it. */
+  margin-bottom: var(--space-3);
+}
+
+.planner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-7);
+}
+
+.output {
+  min-width: 0;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+
+/* ==========================================================================
+   4. COMPONENTS
+   ========================================================================== */
+
+/* --- Shared typography -------------------------------------------------- */
+
+.label {
+  font-size: var(--text-2);
+  font-weight: var(--weight-medium);
+}
+
+.heading {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-heading);
+}
+
+.heading--section {
+  font-size: var(--text-8);
+}
+
+.heading--sub {
+  font-size: var(--text-6);
+}
+
+.statement {
+  max-width: var(--measure-headline);
+  font-family: var(--font-display);
+  font-size: var(--text-10);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-display);
+}
+
+.statement--display {
+  font-size: var(--text-display);
+}
+
+.ruled {
+  padding-top: var(--space-5);
+  border-top: var(--line-heavy) solid var(--color-ink);
+}
+
+.link {
+  color: var(--color-ink);
+  font-weight: var(--weight-medium);
+  text-underline-offset: var(--space-1);
+}
+
+.link:hover {
+  color: var(--color-alarm-deep);
+}
+
+/* --- Masthead ----------------------------------------------------------- */
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.masthead__brand {
+  font-family: var(--font-display);
+  font-size: var(--text-9);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-flat);
+}
+
+/* --- Field: a label above its input ------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.field__label {
+  /* A margin, not a gap on .field: the cut list collapses this label to
+     nothing and a gap would stay behind. */
+  margin-bottom: var(--space-2);
+  white-space: nowrap;
+}
+
+/* --- Input -------------------------------------------------------------- */
+
+.input {
+  width: 100%;
+  height: var(--size-control);
+  padding: 0 var(--space-4);
+  border: var(--line) solid var(--color-ink);
+  background: var(--color-paper);
+}
+
+.input--num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  /* No spinner arrows: they push a right-aligned number out of its column,
+     and nobody steps a length by 1 mm. The keyboard arrows still work. */
+  appearance: textfield;
+}
+
+.input--num::-webkit-inner-spin-button,
+.input--num::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+/* --- Button --------------------------------------------------------------
+   Variants only set the six variables; the rules that paint are written
+   once. Solid is the default. Pressed is always paper, like an input:
+   "this is where your finger is". */
+
+.button {
+  --button-bg: var(--color-ink);
+  --button-fg: var(--color-tape);
+  --button-hover-bg: var(--color-alarm-deep);
+  --button-hover-fg: var(--color-tape);
+  --button-active-bg: var(--color-paper);
+  --button-active-fg: var(--color-ink);
+
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: var(--size-button);
+  padding: 0 var(--space-7);
+  border: var(--line) solid var(--color-ink);
+  background: var(--button-bg);
+  color: var(--button-fg);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--button-hover-bg);
+  color: var(--button-hover-fg);
+}
+
+.button:active {
+  background: var(--button-active-bg);
+  color: var(--button-active-fg);
+}
+
+/* Outline on the tape, for the helpers beside an input. */
+.button--quiet {
+  --button-bg: transparent;
+  --button-fg: var(--color-ink);
+  --button-hover-bg: var(--color-ink);
+
+  min-height: var(--size-control);
+  padding: 0 var(--space-6);
+}
+
+.button--square {
+  width: var(--size-control);
+  padding: 0;
+  font-size: var(--text-7);
+  line-height: var(--leading-flat);
+}
+
+/* Looks like a link, is a button: it changes the page, it does not go
+   anywhere. Keeps the 44 px touch height. */
+.button--link {
+  --button-bg: transparent;
+  --button-fg: var(--color-ink);
+  --button-hover-bg: transparent;
+  --button-hover-fg: var(--color-alarm-deep);
+  --button-active-bg: transparent;
+
+  min-height: var(--size-control);
+  padding: 0 var(--space-1);
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+.button--cta {
+  width: 100%;
+  min-height: var(--size-cta);
+  font-family: var(--font-display);
+  font-size: var(--text-7);
+  font-weight: var(--weight-bold);
+}
+
+/* --- Cut list ------------------------------------------------------------
+   Phone: two lines per piece, name above, numbers below, with every label
+   showing. Four columns do not fit in 328 px with 44 px controls. */
+
+.cutlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.cutlist__row {
+  display: grid;
+  grid-template-columns: var(--width-length) var(--width-qty) minmax(0, 1fr) var(--size-control);
+  grid-template-areas:
+    "piece  piece piece   remove"
+    "length qty   section section";
+  gap: var(--space-3);
+}
+
+.cutlist__piece   { grid-area: piece; }
+.cutlist__length  { grid-area: length; }
+.cutlist__qty     { grid-area: qty; }
+.cutlist__section { grid-area: section; }
+
+.cutlist__remove {
+  grid-area: remove;
+  /* Lines up with the input, not with the label above it. */
+  align-self: end;
+}
+
+.cutlist__error {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 30rem) {
+  .cutlist {
+    gap: var(--space-3);
+  }
+
+  .cutlist__row {
+    grid-template-columns: minmax(0, 1fr) var(--width-length) var(--width-qty) var(--width-section) var(--size-control);
+    grid-template-areas: "piece length qty section remove";
+  }
+
+  /* The first row's labels are the column headings. The others collapse
+     but stay in the page, so every input keeps its name for a screen
+     reader. (display: none would take the name away.) */
+  .cutlist__row + .cutlist__row .field__label {
+    height: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+}
+
+/* --- Chips: stock lengths ------------------------------------------------ */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.chip {
+  /* Anchors the hidden checkbox, so focusing it does not scroll the page. */
+  position: relative;
+  cursor: pointer;
+}
+
+.chip__face {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: var(--width-length);
+  height: var(--size-control);
+  padding: 0 var(--space-5);
+  border: var(--line) solid var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.chip:hover .chip__face {
+  background: var(--color-paper);
+}
+
+/* After the hover rule on purpose: a ticked chip stays black under the
+   pointer. */
+.chip__input:checked + .chip__face {
+  background: var(--color-ink);
+  color: var(--color-tape);
+  font-weight: var(--weight-semibold);
+}
+
+/* --- Add row: one input with its button ---------------------------------- */
+
+.addrow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.addrow__field {
+  flex: 0 1 var(--width-add);
+}
+
+/* --- Choice: a radio with its text --------------------------------------- */
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: var(--size-control);
+  cursor: pointer;
+}
+
+.choice__input {
+  flex: none;
+  width: var(--size-mark);
+  height: var(--size-mark);
+  border: var(--line) solid var(--color-ink);
+  background: var(--color-paper);
+  appearance: none;
+  cursor: pointer;
+}
+
+/* The border grows inwards until only a small square of paper is left. */
+.choice__input:checked {
+  border-width: var(--size-mark-fill);
+}
+
+.choice__name {
+  font-weight: var(--weight-semibold);
+}
+
+/* --- Note ---------------------------------------------------------------- */
+
+.note {
+  font-size: var(--text-2);
+}
+
+.note__lead {
+  font-weight: var(--weight-semibold);
+}
+
+/* --- Banner and field errors --------------------------------------------- */
+
+.banner {
+  padding: var(--space-5);
+  border: var(--line-heavy) solid var(--color-alarm);
+  background: var(--color-paper);
+  color: var(--color-alarm-deep);
+}
+
+.banner__title {
+  font-weight: var(--weight-semibold);
+}
+
+.field-error {
+  color: var(--color-alarm-deep);
+  font-weight: var(--weight-semibold);
+}
+
+/* --- Plan: the cutting diagram -------------------------------------------
+   Every row is the same three columns: count, drawing, offcut length. The
+   drawing column is the full scale (--scale mm, set on .plan), so the tape
+   and all boards share one zero and one unit. */
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.plan__row {
+  display: grid;
+  grid-template-columns: var(--plan-count) minmax(0, 1fr) var(--plan-offcut);
+  gap: var(--plan-gap);
+}
+
+.plan__offcut-head {
+  align-self: end;
+  text-align: right;
+}
+
+.plan__sections,
+.plan__section,
+.plan__stacks {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan__sections { gap: var(--space-7); }
+.plan__section  { gap: var(--space-4); }
+.plan__stacks   { gap: var(--space-5); }
+
+/* --- Ruler: the tape ------------------------------------------------------
+   Each tick is the left border of an equal cell, so the JavaScript only
+   has to make the right number of cells. */
+
+.ruler {
+  grid-column: 2;
+  display: flex;
+  align-items: flex-start;
+  height: var(--size-control);
+  border-top: var(--line-heavy) solid var(--color-ink);
+}
+
+.ruler__tick {
+  position: relative;
+  flex: 1 1 0;
+  height: var(--tick-minor);
+  border-left: var(--line-hair) solid var(--color-ink);
+}
+
+.ruler__tick:nth-child(5n + 1) {
+  height: var(--tick-mid);
+}
+
+.ruler__tick:nth-child(10n + 1) {
+  height: var(--tick-major);
+  border-left-width: var(--line);
+}
+
+/* The end of the tape: only a tick, pulled back so it ends flush with the
+   longest board. */
+.ruler__tick:last-child {
+  flex: none;
+  width: 0;
+  margin-left: calc(-1 * var(--line));
+}
+
+/* Numerals sit left of their tick, as on a real tape. */
+.ruler__label {
+  position: absolute;
+  /* Starts below the mid ticks: on a phone a numeral is wider than the gap
+     between them. */
+  top: var(--tick-mid);
+  right: 100%;
+  padding-right: var(--space-3);
+  color: var(--color-alarm);
+  font-family: var(--font-display);
+  font-size: var(--text-tick);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-flat);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Stack: identical boards, drawn once ---------------------------------- */
+
+.stack__count,
+.stack__offcut {
+  /* One line as tall as the board, so the text centres on the top board
+     however many lie under it. */
+  line-height: var(--size-board);
+  font-variant-numeric: tabular-nums;
+}
+
+.stack__count {
+  font-family: var(--font-display);
+  font-size: var(--text-7);
+  font-weight: var(--weight-bold);
+}
+
+.stack__offcut {
+  text-align: right;
+  font-weight: var(--weight-medium);
+}
+
+/* --stock is this board's length in mm, set on the stack. */
+.stack__boards {
+  width: calc(var(--stock) / var(--scale) * 100%);
+}
+
+/* The boards under the top one: just their front edge. */
+.stack__under {
+  display: block;
+  height: var(--size-edge);
+  border: var(--line) solid var(--color-ink);
+  border-top: 0;
+  background: var(--color-paper);
+}
+
+/* --- Board: one board, cut into segments ----------------------------------
+   Segment widths are --len / --stock. Pieces may shrink a little and the
+   offcut takes what is left, because a saw cut is never drawn thinner than
+   a line: at this scale 3 mm is a third of a pixel and would vanish. */
+
+.board {
+  display: flex;
+  height: var(--size-board);
+  border: var(--line) solid var(--color-ink);
+}
+
+.board__seg {
+  flex: 0 1 calc(var(--len) / var(--stock) * 100%);
+  min-width: 0;
+}
+
+.board__seg--piece {
+  /* Lets the text inside ask how wide its own piece is (see below). */
+  container-type: inline-size;
+  overflow: hidden;
+  padding-top: var(--space-3);
+  background: var(--color-paper);
+  line-height: var(--leading-heading);
+}
+
+.board__seg--kerf {
+  flex-shrink: 0;
+  min-width: var(--kerf-min);
+  background: var(--color-ink);
+}
+
+/* Design decision: the offcut is bare tape inside the board's outline, so
+   it reads as "no timber you need here". The reference hatched it, which
+   needs a CSS image; this page draws with borders and fills only. */
+.board__seg--offcut {
+  flex-grow: 1;
+}
+
+.board__len,
+.board__name {
+  display: block;
+  padding-left: var(--space-2);
+  white-space: nowrap;
+}
+
+.board__len {
+  font-size: var(--text-3);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.board__name {
+  font-size: var(--text-1);
+}
+
+/* A name that does not fit is noise: under 3.5rem only the length stays.
+   Under 2.5rem the length switches to the condensed face, which keeps
+   three digits readable in about 20 px. Sized by the piece, not the
+   screen, so it is right at every width and scale. */
+@container (max-width: 3.5rem) {
+  .board__name {
+    display: none;
+  }
+}
+
+@container (max-width: 2.5rem) {
+  .board__len {
+    padding-left: var(--space-1);
+    font-family: var(--font-display);
+    font-size: var(--text-1);
+  }
+}
+
+/* --- Key ------------------------------------------------------------------ */
+
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-7);
+  margin-top: var(--space-4);
+  font-size: var(--text-2);
+}
+
+.key__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.key__swatch {
+  flex: none;
+  width: var(--size-swatch);
+  height: var(--space-6);
+  border: var(--line) solid var(--color-ink);
+}
+
+.key__swatch--piece {
+  background: var(--color-paper);
+}
+
+/* Only its left border is left: one saw cut. */
+.key__swatch--kerf {
+  width: 0;
+  border-right: 0;
+}
+
+.key__count {
+  font-family: var(--font-display);
+  font-size: var(--text-5);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-flat);
+}
+
+/* --- Ledger: shopping list and totals ------------------------------------- */
+
+.ledger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-8) var(--space-10);
+}
+
+.table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table__caption {
+  padding-bottom: var(--space-3);
+  text-align: left;
+}
+
+.table__cell {
+  padding: var(--space-1) 0;
+  text-align: left;
+}
+
+.table__cell + .table__cell {
+  padding-left: var(--space-8);
+}
+
+.table__cell--head {
+  font-weight: var(--weight-regular);
+}
+
+.table__cell--num {
+  text-align: right;
+}
+
+.table__cell--strong {
+  font-weight: var(--weight-semibold);
+}
+
+/* --- State blocks ---------------------------------------------------------- */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.state__help {
+  max-width: var(--measure-text);
+}
+
+.state__count {
+  /* The countdown changes every second: equal-width digits keep the rest
+     of the sentence still. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Progress --------------------------------------------------------------
+   The native element, flattened. Each browser paints the bar through its
+   own pseudo-element, and they cannot share one rule: a browser drops the
+   whole rule when it meets a selector it does not know. */
+
+.progress {
+  width: 100%;
+  max-width: var(--measure-text);
+  height: var(--space-7);
+  border: var(--line) solid var(--color-ink);
+  background: var(--color-paper);
+  appearance: none;
+}
+
+.progress::-webkit-progress-bar {
+  background: var(--color-paper);
+}
+
+.progress::-webkit-progress-value {
+  background: var(--color-ink);
+}
+
+.progress::-moz-progress-bar {
+  background: var(--color-ink);
+}
+
+
+/* ==========================================================================
+   5. STATES AND UTILITIES
+   Last in the file, so they win over the components above without needing
+   more specific selectors.
+   ========================================================================== */
+
+/* Invalid: set by the JavaScript from the API's answer (aria-invalid) or by
+   the browser once the user has typed something the attributes forbid. */
+.input[aria-invalid="true"],
+.input:user-invalid {
+  border: var(--line-heavy) solid var(--color-alarm);
+}
+
+/* Disabled: a dashed outline with nothing in it. Still black on yellow, so
+   it stays readable; "not available" is said by the line, not by fading. */
+.input:disabled,
+.button:disabled,
+.chip__input:disabled + .chip__face {
+  border-style: dashed;
+  background: transparent;
+  color: var(--color-ink);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+/* For content that must stay available to screen readers and the keyboard
+   but not be seen, such as the checkbox inside a chip. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The browser's own rule for `hidden` loses to any display value set
+   above (flex, grid). This puts it back, for every block the JavaScript
+   shows and hides. */
+[hidden] {
+  display: none;
+}
