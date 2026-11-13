@@ -83,3 +83,12 @@ class SolveView(APIView):
                 }
             )
             return Response(response.data)
+
+
+# Ping the API when the frontend loads so the API starts to wake. Exclude the ping from requests
+class HealthView(APIView):
+    throttle_classes = []
+
+    @extend_schema(exclude=True)
+    def get(self, request):
+        return Response({"status": "ok"})
