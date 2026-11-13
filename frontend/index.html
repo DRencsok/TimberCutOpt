@@ -29,6 +29,7 @@
       #stock-message         message slot under the chips, hidden
       #kerf-value            the number in "3 mm saw cut"
       #plan-button           the "Plan cuts" submit button
+      #api-docs-link         links the api docs from the JS
     Output
       #output                the right column
       #results               data-state="results"
@@ -121,12 +122,13 @@
   <meta name="description" content="Enter a cut list and see which boards to buy and how to cut them, with as little waste as possible.">
   <meta name="theme-color" content="#F6C400">
   <link rel="stylesheet" href="styles.css">
+  <script type="module" src="main.js"></script>
 </head>
 <body class="page">
 
   <header class="masthead">
     <h1 class="masthead__brand">TimberCut</h1>
-    <a class="link" href="https://timbercutopt.onrender.com/api/docs/">API docs</a>
+    <a class="link" id="api-docs-link">API docs</a>
   </header>
 
   <main class="workbench">
