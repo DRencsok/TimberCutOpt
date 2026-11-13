@@ -1,0 +1,531 @@
+<!doctype html>
+<!--
+  TimberCut: static page (issue #10). HTML and CSS only; the JavaScript comes
+  in issues #11 to #16 and hooks into the ids and data- attributes listed here.
+  Class names are for CSS only. JavaScript uses ids, data- attributes and the
+  templates below, and never writes or queries a class name, so the look can
+  change without breaking the behaviour, and the other way round (decision 30).
+
+  THE STATIC EXAMPLE
+  The cut list rows, the plan and the totals show the garden shed, so the page
+  can be judged without JavaScript. The JavaScript replaces all of it.
+
+  WHAT IS VISIBLE
+  The right column (#output) shows exactly one [data-state] block at a time.
+  In this static file that is "results". Every other block has the `hidden`
+  attribute: remove it in the dev tools to check the block.
+  #state-invalid is the exception: it lives in the form and can show together
+  with any of the others.
+
+  IDS
+    Form
+      #plan-form             the whole form (listen for "submit" here)
+      #state-invalid         banner above the cut list, hidden
+      #invalid-messages      <ul> in the banner, one <li> per message
+      #cut-list              <ul> of piece rows
+      #section-options       <datalist> for the section inputs
+      #stock-lengths         holds the stock length chips
+      #stock-add-input       the "add a length" number input
+      #stock-message         message slot under the chips, hidden
+      #kerf-value            the number in "3 mm saw cut"
+      #plan-button           the "Plan cuts" submit button
+    Output
+      #output                the right column
+      #results               data-state="results"
+      #plan-headline         "Buy 11 boards. 3.55 m ends up as waste."
+      #plan                  the diagram; set style="--scale: <longest stock, mm>"
+      #ruler                 one tick per 100 mm, plus one for the end (see
+                             DRAWING A BOARD)
+      #plan-sections         holds one block per section
+      #shopping-body         <tbody> of the shopping list
+      #total-boards, #total-bought, #total-used, #total-waste
+      #state-empty           data-state="empty"         nothing entered yet
+      #state-waking          data-state="waking"        waking the server
+      #state-solving         data-state="solving"
+      #solve-counter         "6 of 10 seconds." or "Finishing…"
+      #solve-progress        <progress>; set .value (and .max) in seconds
+      #state-no-plan         data-state="no-plan"
+      #no-plan-message       the message from the API
+      #state-rate-limit      data-state="rate-limit"
+      #retry-seconds         the countdown number
+      #state-server-error    data-state="server-error"
+
+  TEMPLATES (clone with template.content.cloneNode(true))
+      #piece-row-template    one cut list row
+      #stock-chip-template   one stock length chip
+      #plan-section-template one section heading with an empty stack list
+      #stack-template        one stack: count, empty board, offcut
+      #shopping-row-template one shopping list row
+      #ruler-tick-template        a plain tick
+      #ruler-major-tick-template  a tick with a numeral, every 1000 mm
+      #board-piece-template       a piece segment
+      #board-kerf-template        a saw cut segment
+      #board-offcut-template      the offcut segment
+      #stack-under-template       the edge of one board under the top one
+
+  DATA ATTRIBUTES
+      data-state="..."        the blocks of #output, see above
+      data-action="add-piece"     two buttons: under the list and in #state-empty
+      data-action="load-example"
+      data-action="remove-piece"  one per row
+      data-action="add-stock"
+      data-action="plan-again"    in #state-server-error
+      data-piece-row              on each cut list <li>
+      data-error-for="label|length|quantity|section"
+                                  message slots in each row, hidden
+      data-error-text             the <span> in a slot that takes the message
+      data-section-name           <h3> in a plan section
+      data-stacks                 <ol> in a plan section
+      data-stack                  on each stack <li>; set style="--stock: <mm>"
+      data-stack-count            "3×"
+      data-stack-boards           holds the board and the edges under it
+      data-board                  the drawn board; set its aria-label
+      data-stack-offcut           the offcut length at the right
+      data-piece-length           in a piece segment: "1950"
+      data-piece-name             in a piece segment: "wall stud"
+      data-ruler-label            in a major tick: "1000"
+
+  FORM FIELD NAMES
+      label, length, quantity, section (in each row), stock_length (chips),
+      solver ("greedy" or "cp_sat")
+
+  DRAWING A BOARD (decision 31)
+  A board is a row of segments, each cloned from its template and given its
+  length in mm as --len:
+      piece    #board-piece-template, fill [data-piece-length] and
+               [data-piece-name], set style="--len: 1950"
+      saw cut  #board-kerf-template, set style="--len: 3"
+      offcut   #board-offcut-template, set style="--len: 141"
+  Append them to [data-board] in order. The CSS turns --len, --stock and
+  --scale into widths, so the JavaScript never calculates a percentage. The
+  API leaves a saw cut after every piece while there is an offcut, so the
+  segments add up to the stock length.
+  A stack of n boards gets n − 1 clones of #stack-under-template, appended
+  to [data-stack-boards] after the board.
+  The ruler gets one clone per 100 mm of --scale, plus one for the end:
+  #ruler-major-tick-template at 1000, 2000 … (numeral in
+  [data-ruler-label]), #ruler-tick-template for every other tick, 0
+  included. The CSS makes every 5th and 10th tick taller by itself.
+
+  MARKING A FIELD INVALID
+  Set aria-invalid="true" on the input, put the text in the row's matching
+  [data-error-text], and remove `hidden` from that slot. For screen readers,
+  also give the slot an id and point the input's aria-describedby at it. Do
+  that only while the message shows: a hidden slot is still read out.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TimberCut: plan your timber cuts</title>
+  <meta name="description" content="Enter a cut list and see which boards to buy and how to cut them, with as little waste as possible.">
+  <meta name="theme-color" content="#F6C400">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page">
+
+  <header class="masthead">
+    <h1 class="masthead__brand">TimberCut</h1>
+    <a class="link" href="https://timbercutopt.onrender.com/api/docs/">API docs</a>
+  </header>
+
+  <main class="workbench">
+
+    <form class="planner column" id="plan-form">
+
+      <!-- Invalid input, banner: above the cut list, styled like an invalid
+           field (decision 32). -->
+      <div class="banner" id="state-invalid" role="alert" hidden>
+        <p class="banner__title">This cut list can't be planned yet.</p>
+        <ul class="banner__list" id="invalid-messages">
+          <li>Your cut list has 501 pieces. The most is 500.</li>
+        </ul>
+      </div>
+
+      <section class="planner__group column" aria-labelledby="cut-list-title">
+        <h2 class="heading heading--title" id="cut-list-title">Cut list</h2>
+
+        <!-- Every input has a real label. From 480 px up the labels of the
+             first row double as column headings and the others are hidden
+             visually; on a phone each row shows its own labels, because the
+             fields wrap onto two lines there.
+             role="list": Safari drops list semantics when list-style is none. -->
+        <ul class="cutlist column" id="cut-list" role="list">
+          <li class="cutlist__row" data-piece-row>
+            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
+              <input class="input" type="text" name="label" value="wall stud" required maxlength="200" autocomplete="off"></label>
+            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
+              <input class="input input--num" type="number" name="length" value="1950" required min="1" max="20000" step="1" inputmode="numeric"></label>
+            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
+              <input class="input input--num" type="number" name="quantity" value="16" required min="1" max="500" step="1" inputmode="numeric"></label>
+            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
+              <input class="input" type="text" name="section" value="47x100 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
+            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
+            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text>Give the piece a name.</span></p>
+            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text>Enter a length of 1 mm or more.</span></p>
+            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text>Enter a quantity of 1 or more.</span></p>
+            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text>Enter a section, for example 47x100 C24.</span></p>
+          </li>
+          <li class="cutlist__row" data-piece-row>
+            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
+              <input class="input" type="text" name="label" value="nogging" required maxlength="200" autocomplete="off"></label>
+            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
+              <input class="input input--num" type="number" name="length" value="550" required min="1" max="20000" step="1" inputmode="numeric"></label>
+            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
+              <input class="input input--num" type="number" name="quantity" value="12" required min="1" max="500" step="1" inputmode="numeric"></label>
+            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
+              <input class="input" type="text" name="section" value="47x100 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
+            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
+            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text></span></p>
+          </li>
+          <li class="cutlist__row" data-piece-row>
+            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
+              <input class="input" type="text" name="label" value="rafter" required maxlength="200" autocomplete="off"></label>
+            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
+              <input class="input input--num" type="number" name="length" value="2150" required min="1" max="20000" step="1" inputmode="numeric"></label>
+            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
+              <input class="input input--num" type="number" name="quantity" value="7" required min="1" max="500" step="1" inputmode="numeric"></label>
+            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
+              <input class="input" type="text" name="section" value="47x150 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
+            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
+            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text></span></p>
+          </li>
+        </ul>
+
+        <template id="piece-row-template">
+          <li class="cutlist__row" data-piece-row>
+            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
+              <input class="input" type="text" name="label" required maxlength="200" autocomplete="off"></label>
+            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
+              <input class="input input--num" type="number" name="length" required min="1" max="20000" step="1" inputmode="numeric"></label>
+            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
+              <input class="input input--num" type="number" name="quantity" value="1" required min="1" max="500" step="1" inputmode="numeric"></label>
+            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
+              <input class="input" type="text" name="section" required maxlength="50" list="section-options" autocomplete="off"></label>
+            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
+            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text></span></p>
+            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text></span></p>
+          </li>
+        </template>
+
+        <datalist id="section-options">
+          <option value="47x100 C24"></option>
+          <option value="47x150 C24"></option>
+        </datalist>
+
+        <div class="planner__actions">
+          <button class="button button--link" type="button" data-action="add-piece">Add piece</button>
+          <button class="button button--link" type="button" data-action="load-example">Load example</button>
+        </div>
+      </section>
+
+      <!-- Stock lengths. A chip is a real checkbox with its box hidden, so it
+           works with the keyboard and in the form data without JavaScript.
+           Ticked is solid black; unticked is an outline on the bare tape. -->
+      <fieldset class="planner__group column">
+        <legend class="label planner__legend">Stock lengths, mm</legend>
+        <div class="chips" id="stock-lengths">
+          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="2400" checked><span class="chip__face">2400</span></label>
+          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="3600" checked><span class="chip__face">3600</span></label>
+          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="4800" checked><span class="chip__face">4800</span></label>
+          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="6000" checked><span class="chip__face">6000</span></label>
+        </div>
+        <template id="stock-chip-template">
+          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" checked><span class="chip__face"></span></label>
+        </template>
+        <p class="field-error" id="stock-message" hidden>Tick at least one stock length.</p>
+        <div class="addrow">
+          <label class="field column addrow__field"><span class="label field__label">Add a length, mm</span>
+            <input class="input input--num" id="stock-add-input" type="number" min="1" max="20000" step="1" inputmode="numeric"></label>
+          <button class="button button--quiet" type="button" data-action="add-stock">Add</button>
+        </div>
+      </fieldset>
+
+      <!-- Search choice. Square radio marks, drawn with borders only, because
+           nothing on the page is round. The pair sits in a fieldset, so it is
+           still announced as "1 of 2" radio buttons. -->
+      <fieldset class="planner__group column">
+        <legend class="label planner__legend">How hard to search</legend>
+        <label class="choice"><input class="choice__input" type="radio" name="solver" value="greedy">
+          <span><span class="choice__name">Quick</span> greedy, instant</span></label>
+        <label class="choice"><input class="choice__input" type="radio" name="solver" value="cp_sat" checked>
+          <span><span class="choice__name">Thorough</span> CP-SAT, up to 10 s</span></label>
+      </fieldset>
+
+      <div class="planner__group column">
+        <p class="note"><span class="note__lead"><span id="kerf-value">3</span> mm saw cut</span> is taken off at every cut.</p>
+        <button class="button button--cta" type="submit" id="plan-button">Plan cuts</button>
+      </div>
+    </form>
+
+    <div class="output" id="output">
+
+      <!-- RESULTS -->
+      <section class="results column" id="results" data-state="results" aria-labelledby="plan-headline">
+        <h2 class="statement statement--display" id="plan-headline">Buy 11 boards. 3.55 m ends up as waste.</h2>
+
+        <!-- --scale is the longest stock length in mm. Every board is drawn
+             against it, so a 3600 board is 60% as wide as a 6000 board. -->
+        <div class="plan column" id="plan" style="--scale: 6000">
+
+          <!-- The tape. Plain elements: one tick per 100 mm and one more for
+               the end. Every 5th and 10th tick is taller (nth-child in the
+               CSS), and every 10th carries its label. -->
+          <div class="plan__row">
+            <div class="ruler" id="ruler" aria-hidden="true">
+              <span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
+              <span class="ruler__tick"><span class="ruler__label">1000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
+              <span class="ruler__tick"><span class="ruler__label">2000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
+              <span class="ruler__tick"><span class="ruler__label">3000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
+              <span class="ruler__tick"><span class="ruler__label">4000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
+              <span class="ruler__tick"><span class="ruler__label">5000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
+              <span class="ruler__tick"><span class="ruler__label">6000</span></span>
+            </div>
+            <span class="label plan__offcut-head">Offcut</span>
+          </div>
+
+          <div class="plan__sections column" id="plan-sections">
+
+            <section class="plan__section column">
+              <h3 class="heading heading--sub" data-section-name>47x100 C24</h3>
+              <ol class="plan__stacks column" data-stacks role="list">
+                <li class="plan__row stack" data-stack style="--stock: 6000">
+                  <span class="stack__count" data-stack-count>5×</span>
+                  <div class="stack__boards" data-stack-boards>
+                    <div class="board" data-board role="img" aria-label="6000 mm board cut into wall stud 1950, wall stud 1950, wall stud 1950, offcut 141 mm">
+                      <span class="board__seg board__seg--piece" style="--len: 1950"><span class="board__len">1950</span><span class="board__name">wall stud</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 1950"><span class="board__len">1950</span><span class="board__name">wall stud</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 1950"><span class="board__len">1950</span><span class="board__name">wall stud</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--offcut" style="--len: 141"></span>
+                    </div>
+                    <span class="stack__under"></span><span class="stack__under"></span><span class="stack__under"></span><span class="stack__under"></span>
+                  </div>
+                  <span class="stack__offcut" data-stack-offcut>141</span>
+                </li>
+                <li class="plan__row stack" data-stack style="--stock: 6000">
+                  <span class="stack__count" data-stack-count>1×</span>
+                  <div class="stack__boards" data-stack-boards>
+                    <div class="board" data-board role="img" aria-label="6000 mm board cut into wall stud 1950, nogging 550, nogging 550, nogging 550, nogging 550, nogging 550, nogging 550, offcut 729 mm">
+                      <span class="board__seg board__seg--piece" style="--len: 1950"><span class="board__len">1950</span><span class="board__name">wall stud</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--offcut" style="--len: 729"></span>
+                    </div>
+                  </div>
+                  <span class="stack__offcut" data-stack-offcut>729</span>
+                </li>
+                <li class="plan__row stack" data-stack style="--stock: 3600">
+                  <span class="stack__count" data-stack-count>1×</span>
+                  <div class="stack__boards" data-stack-boards>
+                    <div class="board" data-board role="img" aria-label="3600 mm board cut into nogging 550, nogging 550, nogging 550, nogging 550, nogging 550, nogging 550, offcut 282 mm">
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--offcut" style="--len: 282"></span>
+                    </div>
+                  </div>
+                  <span class="stack__offcut" data-stack-offcut>282</span>
+                </li>
+              </ol>
+            </section>
+
+            <section class="plan__section column">
+              <h3 class="heading heading--sub" data-section-name>47x150 C24</h3>
+              <ol class="plan__stacks column" data-stacks role="list">
+                <li class="plan__row stack" data-stack style="--stock: 4800">
+                  <span class="stack__count" data-stack-count>3×</span>
+                  <div class="stack__boards" data-stack-boards>
+                    <div class="board" data-board role="img" aria-label="4800 mm board cut into rafter 2150, rafter 2150, offcut 494 mm">
+                      <span class="board__seg board__seg--piece" style="--len: 2150"><span class="board__len">2150</span><span class="board__name">rafter</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--piece" style="--len: 2150"><span class="board__len">2150</span><span class="board__name">rafter</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--offcut" style="--len: 494"></span>
+                    </div>
+                    <span class="stack__under"></span><span class="stack__under"></span>
+                  </div>
+                  <span class="stack__offcut" data-stack-offcut>494</span>
+                </li>
+                <li class="plan__row stack" data-stack style="--stock: 2400">
+                  <span class="stack__count" data-stack-count>1×</span>
+                  <div class="stack__boards" data-stack-boards>
+                    <div class="board" data-board role="img" aria-label="2400 mm board cut into rafter 2150, offcut 247 mm">
+                      <span class="board__seg board__seg--piece" style="--len: 2150"><span class="board__len">2150</span><span class="board__name">rafter</span></span>
+                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
+                      <span class="board__seg board__seg--offcut" style="--len: 247"></span>
+                    </div>
+                  </div>
+                  <span class="stack__offcut" data-stack-offcut>247</span>
+                </li>
+              </ol>
+            </section>
+
+          </div>
+
+          <template id="plan-section-template">
+            <section class="plan__section column">
+              <h3 class="heading heading--sub" data-section-name></h3>
+              <ol class="plan__stacks column" data-stacks role="list"></ol>
+            </section>
+          </template>
+
+          <template id="stack-template">
+            <li class="plan__row stack" data-stack>
+              <span class="stack__count" data-stack-count></span>
+              <div class="stack__boards" data-stack-boards>
+                <div class="board" data-board role="img"></div>
+              </div>
+              <span class="stack__offcut" data-stack-offcut></span>
+            </li>
+          </template>
+
+          <!-- The parts of a drawing. The JavaScript clones these and never
+               writes a class name (decision 30). -->
+          <template id="ruler-tick-template">
+            <span class="ruler__tick"></span>
+          </template>
+
+          <template id="ruler-major-tick-template">
+            <span class="ruler__tick"><span class="ruler__label" data-ruler-label></span></span>
+          </template>
+
+          <template id="board-piece-template">
+            <span class="board__seg board__seg--piece"><span class="board__len" data-piece-length></span><span class="board__name" data-piece-name></span></span>
+          </template>
+
+          <template id="board-kerf-template">
+            <span class="board__seg board__seg--kerf"></span>
+          </template>
+
+          <template id="board-offcut-template">
+            <span class="board__seg board__seg--offcut"></span>
+          </template>
+
+          <template id="stack-under-template">
+            <span class="stack__under"></span>
+          </template>
+
+          <!-- A key, because the offcut is drawn as bare tape, not hatched as
+               in the reference. -->
+          <ul class="key">
+            <li class="key__item"><span class="key__swatch key__swatch--piece"></span>Piece, length in mm</li>
+            <li class="key__item"><span class="key__swatch key__swatch--kerf"></span>Saw cut</li>
+            <li class="key__item"><span class="key__swatch"></span>Offcut</li>
+            <li class="key__item"><span class="key__count">3×</span>A stack: cut three boards like this</li>
+          </ul>
+        </div>
+
+        <div class="ledger ruled">
+          <table class="table">
+            <caption class="heading heading--sub table__caption">Buy from the yard</caption>
+            <thead>
+              <tr>
+                <th class="label table__cell" scope="col">Section</th>
+                <th class="label table__cell table__cell--num" scope="col">Length, mm</th>
+                <th class="label table__cell table__cell--num" scope="col">Boards</th>
+              </tr>
+            </thead>
+            <tbody id="shopping-body">
+              <tr><td class="table__cell">47x100 C24</td><td class="table__cell table__cell--num">3600</td><td class="table__cell table__cell--num table__cell--strong">1</td></tr>
+              <tr><td class="table__cell">47x100 C24</td><td class="table__cell table__cell--num">6000</td><td class="table__cell table__cell--num table__cell--strong">6</td></tr>
+              <tr><td class="table__cell">47x150 C24</td><td class="table__cell table__cell--num">2400</td><td class="table__cell table__cell--num table__cell--strong">1</td></tr>
+              <tr><td class="table__cell">47x150 C24</td><td class="table__cell table__cell--num">4800</td><td class="table__cell table__cell--num table__cell--strong">3</td></tr>
+            </tbody>
+          </table>
+          <template id="shopping-row-template">
+            <tr><td class="table__cell"></td><td class="table__cell table__cell--num"></td><td class="table__cell table__cell--num table__cell--strong"></td></tr>
+          </template>
+
+          <table class="table">
+            <caption class="heading heading--sub table__caption">Timber totals</caption>
+            <tbody>
+              <tr><th class="table__cell table__cell--head" scope="row">Boards</th><td class="table__cell table__cell--num" id="total-boards">11</td></tr>
+              <tr><th class="table__cell table__cell--head" scope="row">Bought</th><td class="table__cell table__cell--num" id="total-bought">56.40 m</td></tr>
+              <tr><th class="table__cell table__cell--head" scope="row">Used in pieces</th><td class="table__cell table__cell--num" id="total-used">52.85 m</td></tr>
+              <tr><th class="table__cell table__cell--head table__cell--strong" scope="row">Waste</th><td class="table__cell table__cell--num table__cell--strong" id="total-waste">3.55 m, 6.3%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- STATE BLOCKS
+           One pattern for all of them, taken from TapeStates: a heavy rule,
+           one statement in the display face, at most one line of help and one
+           button. The small headings of the reference ("Server
+           asleep", "Solving") are left out: they named the artboards, and on
+           the real page they would only repeat the statement.
+           role="status" is for news the user is waiting for, role="alert" for
+           problems. Both are read out when `hidden` is removed. -->
+
+      <section class="state column ruled" id="state-empty" data-state="empty" hidden>
+        <h2 class="statement">Add your first piece to see what to buy.</h2>
+        <button class="button" type="button" data-action="add-piece">Add piece</button>
+      </section>
+
+      <section class="state column ruled" id="state-waking" data-state="waking" role="status" hidden>
+        <h2 class="statement">Waking the server.</h2>
+        <p class="state__help">The first plan after a quiet spell can take about 30 seconds. Your cut list is safe.</p>
+      </section>
+
+      <!-- The counter is aria-live="off" so a screen reader says "Searching
+           for less waste" once and does not read out every second.
+           A native <progress>, flat black on paper. For Quick there is no limit
+           to count towards: hide the bar. -->
+      <section class="state column ruled" id="state-solving" data-state="solving" role="status" hidden>
+        <h2 class="statement">Searching for less waste. <span id="solve-counter" aria-live="off">6 of 10 seconds.</span></h2>
+        <progress class="progress" id="solve-progress" max="10" value="6" aria-label="Time used"></progress>
+        <p class="state__help">You get the best plan found by then.</p>
+      </section>
+
+      <section class="state column ruled" id="state-no-plan" data-state="no-plan" role="alert" hidden>
+        <h2 class="statement" id="no-plan-message">Ridge beam is 7200 mm. Your longest board is 6000 mm.</h2>
+        <p class="state__help">Add a longer stock length, or split the piece.</p>
+      </section>
+
+      <section class="state column ruled" id="state-rate-limit" data-state="rate-limit" role="alert" hidden>
+        <h2 class="statement">Limit reached. <span aria-live="off">Plan again in <span class="state__count" id="retry-seconds">42</span> seconds.</span></h2>
+        <p class="state__help">Each visitor can run 20 plans a minute.</p>
+      </section>
+
+      <section class="state column ruled" id="state-server-error" data-state="server-error" role="alert" hidden>
+        <h2 class="statement">The planning server did not respond.</h2>
+        <p class="state__help">Your cut list is still here.</p>
+        <button class="button" type="button" data-action="plan-again">Plan cuts again</button>
+      </section>
+
+    </div>
+  </main>
+
+</body>
+</html>

@@ -12,3 +12,6 @@ plan.json
 scratch.py
 api/db.sqlite3
 api/staticfiles/
+
+# Frontend design mockups (local reference only)
+frontend/design-reference/

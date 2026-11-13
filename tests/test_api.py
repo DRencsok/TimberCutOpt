@@ -10,6 +10,7 @@ from cutopt.get_solver import SOLVERS
 
 client = APIClient()
 URL = reverse("solve")
+HEALTH_URL = reverse("health")
 FRONTEND = "https://app.example.com"
 
 
@@ -239,4 +240,20 @@ def test_cors_rejects_other_origin():
         URL, HTTP_ORIGIN="https://evil.example.com", HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST"
     )
     assert "Access-Control-Allow-Origin" not in response
-    
+
+
+def test_health_returns_ok():
+    response = client.get(HEALTH_URL)
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_health_is_not_throttled():
+    for _ in range(25):
+        response = client.get(HEALTH_URL)
+        assert response.status_code == 200
+
+
+def test_post_is_not_allowed():
+    response = client.post(HEALTH_URL)
+    assert response.status_code == 405
