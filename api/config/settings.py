@@ -36,6 +36,7 @@ CORS_ALLOWED_ORIGINS = [
     origin for origin in os.environ.get("DJANGO_CORS_ALLOWED_ORIGINS", "").split(",") if origin
 ]
 CORS_URLS_REGEX = r"^/api/.*$"
+CORS_EXPOSE_HEADERS = ["Retry-After"]
 
 # Https handled by the host's proxy, which forwards plain HTTP to Django
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

@@ -228,6 +228,12 @@ def test_cors_allows_frontend_origin():
 
 
 @override_settings(CORS_ALLOWED_ORIGINS=[FRONTEND])
+def test_cors_exposes_retry_after_header():
+    response = client.get(URL, HTTP_ORIGIN=FRONTEND)
+    assert response["Access-Control-Expose-Headers"] == "Retry-After"
+
+
+@override_settings(CORS_ALLOWED_ORIGINS=[FRONTEND])
 def test_cors_rejects_other_origin():
     response = client.options(
         URL, HTTP_ORIGIN="https://evil.example.com", HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST"
