@@ -17,7 +17,11 @@ Single-context repo:
 /
 ├── GLOSSARY.md
 ├── docs/DECISIONS.md     ← numbered decision log
-└── src/
+├── src/cutopt/           ← the core: solvers, metrics, CLI
+├── api/                  ← Django REST API
+├── frontend/             ← static page: HTML, CSS, JavaScript
+├── benchmarks/
+└── tests/
 ```
 
 ## Recording decisions

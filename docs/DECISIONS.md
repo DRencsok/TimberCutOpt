@@ -327,3 +327,56 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 - An ASGI server such as uvicorn. Rejected: the API is synchronous and CPU-bound, so async brings nothing.
 
 **Trade-off:** Only 2 requests are handled at once, and a third waits in the queue. More workers need a bigger plan (`WEB_CONCURRENCY`). Gunicorn can't be tried on Windows without Docker.
+
+## Frontend
+
+## 30. JavaScript hooks are ids, data- attributes and templates, never classes
+**Context:** CSS and JavaScript both need to find elements on the page. If both use the same class names, renaming a class for the look breaks the behaviour without any warning.
+
+**Decision:** Class names are for CSS only. The JavaScript finds elements by `id` or `data-` attribute, and creates new elements only by cloning a `<template>` from the page. It never writes or queries a class name. This includes the cutting diagram: the ruler ticks, the board segments and the edges of a stack each have their own template. Every id, data- attribute and template is listed in a comment at the top of `index.html`.
+
+**Alternatives:**
+- `js-` prefixed classes. Rejected: they mix the two jobs in one attribute, and data- attributes can carry a value (`data-action="add-piece"`, `data-error-for="length"`).
+- Let the JavaScript build the board segments by class name. Rejected: it was the first draft, but it made the board's class names part of the JavaScript's contract.
+
+**Trade-off:** More templates in the HTML, and the JavaScript sets lengths through `style="--len: …"` instead of choosing classes. In return the CSS can be restyled freely as long as the ids, data- attributes and templates stay.
+
+## 31. Boards are drawn by the CSS from lengths in millimetres
+**Context:** The cutting diagram draws every board to one scale, so a 3600 mm board is 60% as wide as a 6000 mm board, and each piece inside it is in proportion.
+
+**Decision:** The diagram is plain elements in a flex row, not a canvas or SVG. The JavaScript passes only millimetres: `--scale` (the longest stock length) on the plan, `--stock` on each stack and `--len` on each segment. The CSS computes the widths with `calc()`. A saw cut is never drawn thinner than a line (`--kerf-min`), because 3 mm at this scale is a third of a pixel; pieces shrink slightly and the offcut takes the rest. Container queries hide a piece's name, then shrink its length, when the piece itself gets too narrow. A stack of identical boards is drawn once, with the edges of the boards under it.
+
+**Alternatives:**
+- SVG. Rejected: text inside an SVG doesn't wrap or hide by width, and screen readers handle it worse than an element with `role="img"` and an `aria-label`.
+- Canvas. Rejected: nothing to style or inspect, and it has to be redrawn by hand on every resize.
+- Compute percentages in JavaScript. Rejected: the same formula would live in two places.
+
+**Trade-off:** The drawing isn't exact at small widths: a saw cut is wider than to scale and pieces are slightly narrower. The numbers on the board are always exact.
+
+
+## 32. The invalid-input banner sits above the cut list
+**Context:** When the API rejects the input (issue #16), the user has to see why. Some problems belong to one field, others to the whole cut list (too many pieces in total).
+
+**Decision:** A banner at the top of the form lists every problem. Messages for one field also appear under that field, which gets a heavy red border. The banner uses the same look as an invalid field, paper with a heavy red border, so both read as the same kind of problem. It lives in the form, so it can show together with any state on the right.
+
+**Alternatives:** The banner in the right column, with the other states. Rejected: the problem is in the form, and on a phone the right column sits below it, out of sight.
+
+**Trade-off:** The banner pushes the cut list down while it shows.
+
+## 33. The fonts are served with the page
+**Context:** The design uses Barlow and Barlow Condensed.
+
+**Decision:** Five WOFF2 files (Latin subset) are in `frontend/fonts/` with their SIL Open Font License, and are loaded with `@font-face` and `font-display: swap`.
+
+**Alternatives:** Google Fonts. Rejected: a request to a third party on every visit.
+
+**Trade-off:** About 110 KB in the repository, and new weights have to be added by hand.
+
+## 34. CSS values come from tokens
+**Context:** A page with many components drifts when every rule picks its own sizes and colours.
+
+**Decision:** Every colour, size, space and line weight is a custom property on `:root`. A raw number in a rule is treated as a bug. The exceptions are `0`, `100%`, `100vh` and the ratios inside `calc()`, plus three places that can't use tokens: `@font-face` (custom properties don't work there, so the weights are written out), media and container queries (same reason), and `.visually-hidden` (a fixed idiom whose `1px` isn't a design value). A token belongs to what its name says: space tokens are only for gaps, padding and margins, and a component doesn't borrow another component's size token. The rules are written at the top of `styles.css`.
+
+**Alternatives:** A CSS preprocessor such as Sass. Rejected: a build step for something custom properties already do, and they can change at a breakpoint without repeating rules.
+
+**Trade-off:** More tokens than a looser style would need, for example separate tokens for the ruler height and the control height, even though both are 44 px today.

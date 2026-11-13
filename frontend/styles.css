@@ -21,13 +21,22 @@
    Three blocks are shared typography and may be combined with any element:
    .label (small captions), .heading (condensed subheads) and .statement
    (the big sentences). .ruled is the heavy rule on top of a block.
+   .column is the shared layout: children in a column, spaced by --gap.
 
    RULES OF THE HOUSE
      - Values come from tokens. A raw number in a rule is a bug, except 0,
-       100% and the ratios inside calc().
+       100%, 100vh and the ratios inside calc(). Three places cannot use
+       tokens and are exempt: @font-face (custom properties do not work
+       there), the media and container queries (see BREAKPOINTS) and
+       .visually-hidden (a fixed idiom: its 1px is not a design value).
+     - A token belongs to what its name says. Space tokens are for gaps,
+       padding and margins, never for the size of an object; a component
+       does not borrow another component's width or size token.
      - Selectors are classes (plus pseudo-classes and attributes for state).
        No ids, no element selectors after the Base part, no !important.
-     - JavaScript hooks are ids and data- attributes, never these classes.
+       A rule styles its own block: no selector reaches into another block.
+     - JavaScript hooks are ids, data- attributes and <template>s, never
+       these classes. See docs/DECISIONS.md, decision 30.
 
    BREAKPOINTS: mobile first, two steps. Media and container queries cannot
    read custom properties, so the numbers are written out where they are used:
@@ -104,7 +113,10 @@
   --size-mark-fill: 0.375rem;
   --size-board: 3.375rem;   /* height of a drawn board */
   --size-edge: 0.375rem;    /* a board lying under the top one in a stack */
-  --size-swatch: 1.75rem;
+  --size-swatch-width: 1.75rem;
+  --size-swatch-height: 1rem;
+  --size-progress: 1.25rem;  /* height of the solving bar */
+  --size-ruler: 2.75rem;     /* height of the tape strip; the numerals hang in it */
   --tick-minor: 0.5625rem;
   --tick-mid: 1.0625rem;
   --tick-major: 1.625rem;
@@ -119,6 +131,7 @@
   --width-qty: 3.5rem;       /* fits "500" */
   --width-section: 8.5rem;   /* fits "47x100 C24" beside the datalist arrow */
   --width-add: 9rem;
+  --width-chip: 4.75rem;     /* fits "20000" in a chip */
 
   /* Responsive tokens: phone values here, changed once at 30rem below. */
   --plan-count: 1.875rem;    /* column for "3×" */
@@ -253,6 +266,17 @@ button {
   padding: var(--space-8) var(--page-pad) var(--space-10);
 }
 
+/* The shared layout: children one under the other, spaced by --gap. A
+   block that uses it sets --gap in its own rule, which comes later in the
+   file and so wins. The reset to 0 stops a column from inheriting the gap
+   of the column around it (custom properties inherit). */
+.column {
+  --gap: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
 /* One column on a phone: the form first, the answer under the button that
    asks for it. */
 .workbench {
@@ -269,18 +293,14 @@ button {
 }
 
 .planner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-7);
+  --gap: var(--space-7);
   /* Also holds between 30rem and 70rem, where the column is the full page
      wide and the inputs would stretch out of all proportion. */
   max-width: var(--measure-form);
 }
 
 .planner__group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  --gap: var(--space-3);
 }
 
 .planner__legend {
@@ -299,9 +319,7 @@ button {
 }
 
 .results {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
+  --gap: var(--space-8);
 }
 
 
@@ -322,7 +340,7 @@ button {
   line-height: var(--leading-heading);
 }
 
-.heading--section {
+.heading--title {
   font-size: var(--text-8);
 }
 
@@ -377,8 +395,6 @@ button {
 /* --- Field: a label above its input ------------------------------------- */
 
 .field {
-  display: flex;
-  flex-direction: column;
   min-width: 0;
 }
 
@@ -494,9 +510,7 @@ button {
    showing. Four columns do not fit in 328 px with 44 px controls. */
 
 .cutlist {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
+  --gap: var(--space-6);
 }
 
 .cutlist__row {
@@ -525,7 +539,7 @@ button {
 
 @media (min-width: 30rem) {
   .cutlist {
-    gap: var(--space-3);
+    --gap: var(--space-3);
   }
 
   .cutlist__row {
@@ -536,7 +550,7 @@ button {
   /* The first row's labels are the column headings. The others collapse
      but stay in the page, so every input keeps its name for a screen
      reader. (display: none would take the name away.) */
-  .cutlist__row + .cutlist__row .field__label {
+  .cutlist__row + .cutlist__row .cutlist__label {
     height: 0;
     margin: 0;
     overflow: hidden;
@@ -561,7 +575,7 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-width: var(--width-length);
+  min-width: var(--width-chip);
   height: var(--size-control);
   padding: 0 var(--space-5);
   border: var(--line) solid var(--color-ink);
@@ -656,9 +670,7 @@ button {
    and all boards share one zero and one unit. */
 
 .plan {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+  --gap: var(--space-5);
 }
 
 .plan__row {
@@ -672,16 +684,9 @@ button {
   text-align: right;
 }
 
-.plan__sections,
-.plan__section,
-.plan__stacks {
-  display: flex;
-  flex-direction: column;
-}
-
-.plan__sections { gap: var(--space-7); }
-.plan__section  { gap: var(--space-4); }
-.plan__stacks   { gap: var(--space-5); }
+.plan__sections { --gap: var(--space-7); }
+.plan__section  { --gap: var(--space-4); }
+.plan__stacks   { --gap: var(--space-5); }
 
 /* --- Ruler: the tape ------------------------------------------------------
    Each tick is the left border of an equal cell, so the JavaScript only
@@ -691,7 +696,7 @@ button {
   grid-column: 2;
   display: flex;
   align-items: flex-start;
-  height: var(--size-control);
+  height: var(--size-ruler);
   border-top: var(--line-heavy) solid var(--color-ink);
 }
 
@@ -801,9 +806,9 @@ button {
   background: var(--color-ink);
 }
 
-/* Design decision: the offcut is bare tape inside the board's outline, so
-   it reads as "no timber you need here". The reference hatched it, which
-   needs a CSS image; this page draws with borders and fills only. */
+/* Bare tape inside the board's outline: "no timber you need here". The
+   reference hatched it, which needs a CSS image; this page draws with
+   borders and fills only. */
 .board__seg--offcut {
   flex-grow: 1;
 }
@@ -861,8 +866,8 @@ button {
 
 .key__swatch {
   flex: none;
-  width: var(--size-swatch);
-  height: var(--space-6);
+  width: var(--size-swatch-width);
+  height: var(--size-swatch-height);
   border: var(--line) solid var(--color-ink);
 }
 
@@ -926,10 +931,8 @@ button {
 /* --- State blocks ---------------------------------------------------------- */
 
 .state {
-  display: flex;
-  flex-direction: column;
+  --gap: var(--space-5);
   align-items: flex-start;
-  gap: var(--space-5);
 }
 
 .state__help {
@@ -950,7 +953,7 @@ button {
 .progress {
   width: 100%;
   max-width: var(--measure-text);
-  height: var(--space-7);
+  height: var(--size-progress);
   border: var(--line) solid var(--color-ink);
   background: var(--color-paper);
   appearance: none;
