@@ -2,42 +2,51 @@
 
 [![CI](https://github.com/DRencsok/TimberCutOpt/actions/workflows/ci.yml/badge.svg)](https://github.com/DRencsok/TimberCutOpt/actions/workflows/ci.yml)
 
-**Turns a construction cut list into a cutting plan that wastes as little timber as possible.**
-Includes a fast greedy heuristic and an exact CP-SAT model, plus a benchmark comparing the two.
-Use it from the command line or through a REST API.
+Takes the cut list for a timber construction job and works out which stock boards to buy and
+how to cut them, so as little timber as possible ends up as offcuts. It has two solvers, a fast
+greedy heuristic and an exact CP-SAT model, and runs from the command line or as a REST API.
 
-**Try it live:** [timbercutopt.onrender.com/api/docs](https://timbercutopt.onrender.com/api/docs/)
-(free hosting: the first request after a quiet period can take about 30 s while the server wakes up)
+On small jobs the exact solver cuts waste from 9.8 % to 4.2 %. On 500-piece jobs the greedy
+heuristic gets within 0.3 points of it in under 20 ms.
 
----
+Live demo: [timbercutopt.onrender.com/api/docs](https://timbercutopt.onrender.com/api/docs/)
+(free hosting, so the first request can take about 30 s while the server wakes up)
+
+Built with Python, Google OR-Tools (CP-SAT), Django REST Framework, Docker and GitHub Actions,
+deployed on Render.
+
+## Why I built this
+
+I wanted to learn how to build a whole application, not just a script. I picked a timber
+problem because I study timber construction, and this is a tool my classmates and I could
+actually use.
+
+Most of it was new to me: the greedy algorithm, Google's OR-Tools and its CP-SAT solver,
+Django REST Framework, Docker and writing a Dockerfile, and setting up CORS. The hardest part
+was the CP-SAT model. It's built from 2D tables of yes/no variables (which piece goes on which
+board, which stock length each board is), and getting the constraints between them right
+took the most work.
 
 ## The problem
 
-Building plans list the timber pieces a job needs: 16 wall studs at 1950 mm, 7 rafters at
-2150 mm, and so on. Timber yards don't sell those lengths. They sell **standard stock lengths**
-(typically 2400, 3600, 4800 and 6000 mm), and every piece has to be sawn out of a stock board.
-
-Choosing which boards to buy and how to cut them decides how much timber ends up as offcuts
-in the skip. Done by hand, this usually means over-ordering. Mathematically, it's the
-**one-dimensional cutting stock problem**, which is NP-hard.
-
-### Timber terms used in this project
+Building plans list the pieces a job needs: 16 wall studs at 1950 mm, 7 rafters at 2150 mm,
+and so on. Timber yards don't sell those lengths. They sell standard stock lengths (usually
+2400, 3600, 4800 and 6000 mm), and every piece has to be sawn out of one. Done by hand, this
+usually means over-ordering. It's the one-dimensional cutting stock problem, which is NP-hard.
 
 | Term | Meaning |
 |---|---|
-| **Section** | The board's cross-section and grade, e.g. `47x100 C24`: 47 mm thick, 100 mm wide, strength class C24. Pieces can only be cut from stock of the same section. |
-| **Stock length** | A length the timber yard sells, e.g. 4800 mm. Supply can be unlimited or limited. |
-| **Kerf** | The width of wood the saw blade turns into dust on every cut (usually 2–4 mm). |
-| **Offcut** | The leftover length after all pieces have been cut from a board. |
+| Section | The board's cross-section and grade, e.g. `47x100 C24`: 47 mm thick, 100 mm wide, strength class C24. Pieces can only be cut from stock of the same section. |
+| Stock length | A length the timber yard sells, e.g. 4800 mm. |
+| Kerf | The width of wood the saw blade turns into dust on every cut, usually 2–4 mm. |
+| Offcut | What's left of a board after all its pieces are cut. |
 
-> Why 47 and not 50? Timber is sawn at a nominal 50 mm, then dried and planed/regularised,
-> which removes a few millimetres. A "2×4" is really 47×100 in the UK/EU, or 38×89 in North America.
-
----
+Timber is sawn at a nominal 50 mm and then dried and planed, which is why a "2×4" is really
+47×100 in the UK/EU (38×89 in North America).
 
 ## Example
 
-Input cut list (`examples/shed.csv`):
+Cut list (`examples/shed.csv`):
 
 ```csv
 label,length,quantity,section
@@ -47,12 +56,7 @@ rafter,2150,7,47x150 C24
 ```
 
 ```
-cutopt solve examples/shed.csv
-```
-
-Output:
-
-```
+$ cutopt solve examples/shed.csv
                                Cutting Plan
 +------------------------------------------------------------------------+
 | Id | Section    | Stock | Cuts                           | Offcut (mm) |
@@ -86,54 +90,27 @@ Output:
 +--------------------------------------------------------------------+
 ```
 
-Use `--solver` to choose the solver: `greedy` (the default) or `cp_sat`.
+`--solver cp_sat` switches to the exact solver. It stops after 10 s by default (change it with
+`--time-limit`) and returns the best plan found so far. `cutopt solve --help` lists all options.
 
-```
-cutopt solve examples/shed.csv --solver cp_sat
-```
+## Running it locally
 
-CP-SAT stops after 10 seconds by default. Use `--time-limit` to give it more or less time
-(in seconds). Large cut lists may need longer to reach the best plan:
-
-```
-cutopt solve examples/shed.csv --solver cp_sat --time-limit 30
-```
-
-When the time runs out, CP-SAT returns the best plan it has found so far, or greedy's plan if
-it found none. `--time-limit` only applies to `cp_sat`; greedy ignores it.
-
----
-
-## Installation & usage
-
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+Needs Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/DRencsok/TimberCutOpt.git
 cd TimberCutOpt
 uv sync
 uv run pytest
-uv run cutopt --help
 uv run cutopt solve examples/shed.csv
 ```
-
-`uv sync` installs the package with its `dev` tools (pytest, Hypothesis, ruff). The benchmark
-libraries are a separate group, see [Results](#results-greedy-vs-cp-sat).
-`--stock` defaults to `2400,3600,4800,6000` and `--kerf` to `3`.
-
----
 
 ## REST API
 
 `POST /api/solve/` takes the same cut list as JSON and returns the boards, the shopping list
-and a summary.
-
-The API is live at https://timbercutopt.onrender.com. The easiest way to try it is the
-[interactive docs (Swagger UI)](https://timbercutopt.onrender.com/api/docs/): open
-`POST /api/solve/`, click **Try it out**, then **Execute**. The OpenAPI schema is at
-[`/api/schema/`](https://timbercutopt.onrender.com/api/schema/).
-
-From a terminal (bash, macOS/Linux or Git Bash on Windows):
+and a summary. The easiest way to try it is the
+[Swagger UI](https://timbercutopt.onrender.com/api/docs/): open `POST /api/solve/`, click
+Try it out, then Execute.
 
 ```bash
 curl -X POST https://timbercutopt.onrender.com/api/solve/ \
@@ -143,93 +120,73 @@ curl -X POST https://timbercutopt.onrender.com/api/solve/ \
       {"label": "wall stud", "length": 1950, "quantity": 16, "section": "47x100 C24"},
       {"label": "rafter", "length": 2150, "quantity": 7, "section": "47x150 C24"}
     ],
-    "stock_lengths": [2400, 3600, 4800, 6000],
-    "kerf": 3,
-    "solver": "cp_sat",
-    "time_limit": 10
+    "solver": "cp_sat"
   }'
 ```
 
-Only `pieces` is required. The other fields default to the values above, except `solver`,
-which defaults to `greedy`. `time_limit` is the total for the whole request, split equally
-between sections. The API limits a request to 500 pieces and a 20 s time limit, and allows
-20 requests per minute per client.
+Only `pieces` is required. Requests are capped at 500 pieces and a 20 s time limit, and
+throttled to 20 per minute per client.
 
-Run it locally with Docker:
+To run the API locally with Docker (docs at http://localhost:8000/api/docs/):
 
 ```bash
 docker build -t timbercut-api .
 docker run --rm -p 8000:8000 -e DJANGO_SECRET_KEY=local-dev-key -e DJANGO_ALLOWED_HOSTS=localhost timbercut-api
 ```
 
-Or without Docker, in development mode:
-
-```bash
-DJANGO_DEBUG=True uv run python api/manage.py runserver
-```
-
-Either way, the docs are then at http://localhost:8000/api/docs/.
-
----
-
 ## How it works
 
+### Solvers
+
+- Greedy (First-Fit Decreasing): sort the pieces longest first and put each one on the first
+  board it fits on, opening a new board when none fits. Very fast and usually close to
+  optimal, but with no guarantee.
+- CP-SAT (Google OR-Tools): a constraint model that assigns pieces to boards and picks a stock
+  length for each board, minimising the total timber bought. It can prove the plan is optimal
+  on small and medium jobs.
+
 ### Modelling decisions
-- **Lengths are whole millimetres (`int`).** This avoids floating-point rounding errors, and
-  CP-SAT only accepts integers.
-- **Kerf is modelled exactly.** *n* pieces on a board need *n − 1* cuts between them, plus one
+
+- Kerf is modelled exactly. *n* pieces on a board need *n − 1* cuts between them, plus one
   more if an offcut is left. So a 2400 mm piece fits a 2400 mm board, but two 1200 mm pieces
   with a 3 mm kerf don't.
-- **Each section is solved separately.** Different sections can never share a board, so a whole
-  job splits into independent 1D problems, one per section.
-- **Usage is data, not type.** A "stud" and a "nogging" are just labels. What decides which
-  board a piece can come from is its section.
-- **Inputs are immutable.** `Piece`, `StockLength` and `Problem` are frozen dataclasses holding
-  tuples, so every solver receives exactly the same input and none can modify it for the others.
-- **Invalid input raises specific errors.** A piece longer than any stock of its section, or a
-  section with no stock, raises its own exception. All of them subclass `CutOptError`, so the
-  CLI and API can catch a single base class.
+- Each section is solved separately. Different sections can never share a board, so a job
+  splits into independent smaller problems, which also makes CP-SAT faster.
+- CP-SAT never does worse than greedy. Greedy runs first, its plan is the starting point and
+  its board count is the most boards CP-SAT may use.
+- The core has no web dependencies. The solvers are a plain Python package that never imports
+  Django, so the CLI, the API and the benchmark are thin layers on the same code, and the core
+  tests run without a server.
 
-See [docs/DECISIONS.md](docs/DECISIONS.md) for the full decision log.
-
-### Solvers
-- **Greedy: First-Fit Decreasing.** Sort pieces longest-first, then put each one on the first
-  board it fits on. Open a new board if none fits. Very fast, usually close to optimal, with no
-  guarantee.
-- **CP-SAT (Google OR-Tools).** A constraint programming model that assigns pieces to boards
-  under capacity and kerf constraints and minimises the total timber bought. Can prove
-  optimality on small and medium instances. Greedy runs first, and its board count is the most
-  boards CP-SAT may use, so CP-SAT's plan is never worse than greedy's.
+Lengths are whole millimetres (CP-SAT only accepts integers), and the input objects are
+immutable so one solver can't change the problem for the other. The full decision log is in
+[docs/DECISIONS.md](docs/DECISIONS.md).
 
 ### Known limitations
-- Stock quantity limits are not enforced yet. Unlimited supply of every stock length is assumed.
-- The stock lengths (`--stock` in the CLI, `stock_lengths` in the API) apply to every section
-  in the cut list. Different lengths per section (e.g. via a stock CSV file) are planned.
 
----
+- Stock supply is assumed unlimited. Quantity limits aren't enforced yet.
+- The same stock lengths apply to every section in a cut list.
 
 ## Results: greedy vs CP-SAT
 
-Each point is the median of 3 random problems (seeds 0–2) per size: one section, one piece
-per length, lengths 300–3000 mm. CP-SAT had a 30 s time limit.
+Each point is the median of 3 random problems per size (one section, lengths 300–3000 mm).
+CP-SAT had a 30 s time limit.
 
 ![Material waste: Greedy vs CP-SAT](benchmarks/results/waste.png)
 
-CP-SAT wastes less at every size, and the gap is largest on small jobs (4.2 % vs 9.8 % at
-10 pieces). Both solvers used the same number of boards in every run. CP-SAT saves timber
-by choosing shorter stock lengths, typically about 1.2 m per problem. On large cut lists
-that is a small share of the total, so at 250+ pieces greedy is within 0.3 percentage points.
+CP-SAT wastes less at every size, and the gap is biggest on small jobs (4.2 % vs 9.8 % at
+10 pieces). Both solvers always used the same number of boards. CP-SAT saves timber by picking
+shorter stock lengths, about 1.2 m per problem, which barely matters on a large job: from 250
+pieces up, greedy is within 0.3 points.
 
 ![Runtime: Greedy vs CP-SAT](benchmarks/results/runtime.png)
 
-Greedy finishes in under 20 ms even at 500 pieces. CP-SAT solves small problems in under
-0.2 s, but from 50 pieces on it usually runs until the 30 s limit and returns its best plan
-so far, without proof that it is optimal.
+Greedy takes under 20 ms even at 500 pieces. CP-SAT solves small problems in under 0.2 s, but
+from 50 pieces up it usually hits the 30 s limit and returns its best plan without proving it
+optimal. So CP-SAT is worth it on small and medium cut lists, and greedy is the better choice
+on large ones.
 
-**In short:** CP-SAT is worth it on small and medium cut lists, where it saves the most.
-On large ones, greedy gets nearly the same result thousands of times faster.
-
-Reproduce:
+To reproduce:
 
 ```bash
 uv sync --group bench
@@ -238,10 +195,8 @@ uv run python benchmarks/plot.py
 ```
 
 > [!WARNING]
-> `benchmarks/run.py` takes **about 15 minutes**. From 50 pieces on, most CP-SAT runs use the
+> `benchmarks/run.py` takes about 15 minutes. From 50 pieces up, most CP-SAT runs use the
 > full 30 s limit, and each problem is solved twice.
-
----
 
 ## Architecture
 
@@ -250,7 +205,7 @@ flowchart LR
     CSV[/"cut list (CSV)"/] --> CLI
     JSON[/"JSON request"/] --> API
 
-    subgraph Front doors
+    subgraph Entry points
         CLI["cli.py<br/>cutopt solve"]
         API["api/<br/>Django REST API"]
     end
@@ -272,36 +227,21 @@ flowchart LR
     METRICS --> OUT[/"cutting plan + metrics"/]
 ```
 
----
-
 ## Project structure
 
 ```
-src/cutopt/      core package: models, solvers, metrics, CSV input, CLI. No web dependencies.
-api/             Django REST API (Django REST Framework, OpenAPI docs)
+src/cutopt/      core package: models, solvers, metrics, CSV input, CLI
+api/             Django REST API (DRF, OpenAPI docs)
 tests/           pytest tests for the core, the CLI and the API
 examples/        sample cut lists
 benchmarks/      greedy vs CP-SAT comparison
 Dockerfile       production image for the API (gunicorn + WhiteNoise)
 ```
 
-The optimizer core is a plain Python package. The CLI, the REST API and the benchmarks are
-thin layers on top of the same code. The core never imports Django, so using it doesn't
-require a web stack, its tests run without a server, and the web framework could be swapped
-without touching the solvers. See
-[decision 13](docs/DECISIONS.md#13-the-core-has-no-web-dependencies) for the full reasoning.
-OR-Tools is a required dependency, so both solvers work after a plain install (see
-[decision 15](docs/DECISIONS.md#15-or-tools-is-a-required-dependency)).
-
----
-
 ## Roadmap
 
-Planned after v1.0:
-
+- Automatic deploys after CI passes
 - Web frontend with visual cutting diagrams
 - User accounts, so cut lists and plans can be saved
-- CI/CD with GitHub Actions: lint and tests on every push, automatic deploys
 - Stock quantity limits and different stock lengths per section
 - 2D sheet goods (plywood/OSB panels)
-
