@@ -153,51 +153,6 @@
              fields wrap onto two lines there.
              role="list": Safari drops list semantics when list-style is none. -->
         <ul class="cutlist column" id="cut-list" role="list">
-          <li class="cutlist__row" data-piece-row>
-            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
-              <input class="input" type="text" name="label" value="wall stud" required maxlength="200" autocomplete="off"></label>
-            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
-              <input class="input input--num" type="number" name="length" value="1950" required min="1" max="20000" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
-              <input class="input input--num" type="number" name="quantity" value="16" required min="1" max="500" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
-              <input class="input" type="text" name="section" value="47x100 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
-            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
-            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text>Give the piece a name.</span></p>
-            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text>Enter a length of 1 mm or more.</span></p>
-            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text>Enter a quantity of 1 or more.</span></p>
-            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text>Enter a section, for example 47x100 C24.</span></p>
-          </li>
-          <li class="cutlist__row" data-piece-row>
-            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
-              <input class="input" type="text" name="label" value="nogging" required maxlength="200" autocomplete="off"></label>
-            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
-              <input class="input input--num" type="number" name="length" value="550" required min="1" max="20000" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
-              <input class="input input--num" type="number" name="quantity" value="12" required min="1" max="500" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
-              <input class="input" type="text" name="section" value="47x100 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
-            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
-            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text></span></p>
-          </li>
-          <li class="cutlist__row" data-piece-row>
-            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
-              <input class="input" type="text" name="label" value="rafter" required maxlength="200" autocomplete="off"></label>
-            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
-              <input class="input input--num" type="number" name="length" value="2150" required min="1" max="20000" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
-              <input class="input input--num" type="number" name="quantity" value="7" required min="1" max="500" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
-              <input class="input" type="text" name="section" value="47x150 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
-            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
-            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text></span></p>
-          </li>
         </ul>
 
         <template id="piece-row-template">
