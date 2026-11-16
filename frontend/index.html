@@ -190,15 +190,13 @@
       <fieldset class="planner__group column">
         <legend class="label planner__legend">Stock lengths, mm</legend>
         <div class="chips" id="stock-lengths">
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="2400" checked><span class="chip__face">2400</span></label>
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="3600" checked><span class="chip__face">3600</span></label>
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="4800" checked><span class="chip__face">4800</span></label>
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="6000" checked><span class="chip__face">6000</span></label>
         </div>
+
         <template id="stock-chip-template">
           <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" checked><span class="chip__face"></span></label>
         </template>
-        <p class="field-error" id="stock-message" hidden>Tick at least one stock length.</p>
+
+        <p class="field-error" id="stock-message" hidden></p>
         <div class="addrow">
           <label class="field column addrow__field"><span class="label field__label">Add a length, mm</span>
             <input class="input input--num" id="stock-add-input" type="number" min="1" max="20000" step="1" inputmode="numeric"></label>
