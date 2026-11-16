@@ -1,6 +1,12 @@
+import re
 from dataclasses import dataclass, field
 
 from .errors import CutOptError
+
+
+def _normalise_section(section: str) -> str:
+    section = " ".join(section.split()).upper()
+    return re.sub(r"(?<=\d)X(?=\d)", "x", section)
 
 
 @dataclass(frozen=True)
@@ -11,6 +17,10 @@ class Piece:
     quantity: int = 1
 
     def __post_init__(self):
+        object.__setattr__(self, "section", _normalise_section(self.section))
+        if not self.section:
+            raise CutOptError("Section is a required field")
+
         if self.length <= 0:
             raise CutOptError(f"length: must be bigger than 0, got {self.length}")
         if self.quantity <= 0:
@@ -24,6 +34,10 @@ class StockLength:
     quantity: int | None = None
 
     def __post_init__(self):
+        object.__setattr__(self, "section", _normalise_section(self.section))
+        if not self.section:
+            raise CutOptError("Section is a required field")
+
         if self.length <= 0:
             raise CutOptError(f"length: must be bigger than 0, got {self.length}")
 

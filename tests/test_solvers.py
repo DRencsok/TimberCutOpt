@@ -62,7 +62,17 @@ def test_piece_longer_than_stock(solver):
         Piece(SECTION1, "nogging", 801, 1),
     )
     stock = StockLength(SECTION1, 800)
-    with pytest.raises(PieceTooLongError, match="is longer than stock"):
+    with pytest.raises(PieceTooLongError, match="Your longest board is 800"):
+        solver(Problem((stock,), 0, pieces))
+
+
+@pytest.mark.parametrize("solver", SOLVERS)
+def test_piece_too_long_message_full_text(solver):
+    pieces = (Piece(SECTION1, "ridge beam", 7200, 1),)
+    stock = StockLength(SECTION1, 6000)
+    with pytest.raises(
+        PieceTooLongError, match="ridge beam is 7200 mm. Your longest board is 6000 mm."
+    ):
         solver(Problem((stock,), 0, pieces))
 
 
@@ -119,7 +129,7 @@ def test_too_long_check_if_uses_own_section(solver):
         StockLength(SECTION2, 4800),
     )
     problem = Problem(stocks, 0, (piece,))
-    with pytest.raises(PieceTooLongError, match="longer than stock"):
+    with pytest.raises(PieceTooLongError, match="Your longest board is 2400"):
         solver(problem)
 
 

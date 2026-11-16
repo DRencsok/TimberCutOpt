@@ -1,9 +1,20 @@
 import pytest
+from helpers import make_problem
 
 from cutopt.errors import CutOptError
+from cutopt.greedy import greedycut
 from cutopt.models import CutPattern, Piece, Problem, StockLength
 
 SECTION = "47x100 C24"
+CLEANUP_SECTIONS = [
+    ("47x100 C24", "47x100 C24"),
+    ("47X100 C24", "47x100 C24"),
+    ("47x100 c24", "47x100 C24"),
+    ("47x100    c24", "47x100 C24"),
+    ("   47x100 c24   ", "47x100 C24"),
+    ("47x150 c16", "47x150 C16"),
+]
+EMPTY = ["", " "]
 
 
 def make_board(stock_length, lengths, kerf=3):
@@ -65,3 +76,33 @@ def test_leftover_narrower_than_kerf_turns_to_dust():
 
 def test_empty_board_is_all_offcut():
     assert make_board(2400, []).offcut == 2400
+
+
+@pytest.mark.parametrize("section, expected", CLEANUP_SECTIONS)
+def test_section_is_normalised(section, expected):
+    problem = make_problem(pieces=[(2200, 1)], stocks=[4800, 6000], section=section)
+    assert problem.pieces[0].section == expected
+    assert problem.stock[0].section == expected
+
+
+def test_cleaned_up_sections_use_same_board():
+    problem = Problem(
+        stock=(StockLength(section="47X100 c24", length=6000),),
+        kerf=0,
+        pieces=(
+            Piece(section="47x100    C24", label="stud", length=1200, quantity=1),
+            Piece(section="   47X100 c24  ", label="nogging", length=1200, quantity=1),
+        ),
+    )
+    result = greedycut(problem)
+    assert len(result) == 1
+    assert result[0].section == "47x100 C24"
+    assert len(result[0].cuts) == 2
+    assert result[0].cuts[0].section == "47x100 C24"
+    assert result[0].cuts[1].section == "47x100 C24"
+
+
+@pytest.mark.parametrize("empty", EMPTY)
+def test_empty_section_input_doesnt_pass_throug_normalisation(empty):
+    with pytest.raises(CutOptError, match="Section is a required field"):
+        make_problem(pieces=[(2150, 2)], stocks=[3600, 4800], section=empty)

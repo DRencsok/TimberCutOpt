@@ -95,8 +95,8 @@ def greedycut(problem: Problem) -> list[CutPattern]:
         for piece in section_pieces:
             if piece.length > section_stocks[0].length:
                 raise PieceTooLongError(
-                    f"Piece {piece.label} ({piece.length}) is longer than stock"
-                    f" {section_stocks[0].length}"
+                    f"{piece.label} is {piece.length} mm. Your longest board is"
+                    f" {section_stocks[0].length} mm."
                 )
             for _ in range(piece.quantity):
                 exp_pieces.append(
