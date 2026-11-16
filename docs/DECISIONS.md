@@ -328,7 +328,6 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 
 **Trade-off:** Only 2 requests are handled at once, and a third waits in the queue. More workers need a bigger plan (`WEB_CONCURRENCY`). Gunicorn can't be tried on Windows without Docker.
 
-## Frontend
 
 ## 30. JavaScript hooks are ids, data- attributes and templates, never classes
 **Context:** CSS and JavaScript both need to find elements on the page. If both use the same class names, renaming a class for the look breaks the behaviour without any warning.
@@ -380,3 +379,14 @@ Calling greedy also validates the input, so both solvers raise the same errors.
 **Alternatives:** A CSS preprocessor such as Sass. Rejected: a build step for something custom properties already do, and they can change at a breakpoint without repeating rules.
 
 **Trade-off:** More tokens than a looser style would need, for example separate tokens for the ruler height and the control height, even though both are 44 px today.
+
+## 35. The core cleans section names
+**Context:** A section is free text, and pieces are only cut from stock with exactly the same section (decision 4). `47x100 C24`, `47x100 c24` and `47x100  C24` were three different sections, so their pieces went onto separate boards and the user bought more timber than needed.
+
+**Decision:** `Piece` and `StockLength` clean their section in `__post_init__`, using one function in `models.py`: trim the ends, collapse runs of spaces into one, uppercase everything, then turn an `X` between two digits back into `x`. The rest of the core, the CLI and the API only ever see the cleaned name, and the plan, the shopping list and the API response show it.
+
+**Alternatives:**
+- Clean in the frontend. Rejected: the CLI and anyone calling the API directly would still get the old behaviour.
+- Clean in `io.py` or the API serializer. Rejected: the API builds `Piece` objects without going through `io.py`, so the rule would have to live in two places and could drift apart.
+
+**Trade-off:** The user sees the cleaned name, not what they typed. Sections that differ only in case or spacing can't be kept apart, and the rule can't tell when an uppercase letter was meant.
