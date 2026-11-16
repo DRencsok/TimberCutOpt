@@ -29,6 +29,7 @@
       #stock-message         message slot under the chips, hidden
       #kerf-value            the number in "3 mm saw cut"
       #plan-button           the "Plan cuts" submit button
+      #api-docs-link         links the api docs from the JS
     Output
       #output                the right column
       #results               data-state="results"
@@ -121,12 +122,13 @@
   <meta name="description" content="Enter a cut list and see which boards to buy and how to cut them, with as little waste as possible.">
   <meta name="theme-color" content="#F6C400">
   <link rel="stylesheet" href="styles.css">
+  <script type="module" src="main.js"></script>
 </head>
 <body class="page">
 
   <header class="masthead">
     <h1 class="masthead__brand">TimberCut</h1>
-    <a class="link" href="https://timbercutopt.onrender.com/api/docs/">API docs</a>
+    <a class="link" id="api-docs-link">API docs</a>
   </header>
 
   <main class="workbench">
@@ -151,51 +153,6 @@
              fields wrap onto two lines there.
              role="list": Safari drops list semantics when list-style is none. -->
         <ul class="cutlist column" id="cut-list" role="list">
-          <li class="cutlist__row" data-piece-row>
-            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
-              <input class="input" type="text" name="label" value="wall stud" required maxlength="200" autocomplete="off"></label>
-            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
-              <input class="input input--num" type="number" name="length" value="1950" required min="1" max="20000" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
-              <input class="input input--num" type="number" name="quantity" value="16" required min="1" max="500" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
-              <input class="input" type="text" name="section" value="47x100 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
-            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
-            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text>Give the piece a name.</span></p>
-            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text>Enter a length of 1 mm or more.</span></p>
-            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text>Enter a quantity of 1 or more.</span></p>
-            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text>Enter a section, for example 47x100 C24.</span></p>
-          </li>
-          <li class="cutlist__row" data-piece-row>
-            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
-              <input class="input" type="text" name="label" value="nogging" required maxlength="200" autocomplete="off"></label>
-            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
-              <input class="input input--num" type="number" name="length" value="550" required min="1" max="20000" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
-              <input class="input input--num" type="number" name="quantity" value="12" required min="1" max="500" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
-              <input class="input" type="text" name="section" value="47x100 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
-            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
-            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text></span></p>
-          </li>
-          <li class="cutlist__row" data-piece-row>
-            <label class="field column cutlist__piece"><span class="label field__label cutlist__label">Piece</span>
-              <input class="input" type="text" name="label" value="rafter" required maxlength="200" autocomplete="off"></label>
-            <label class="field column cutlist__length"><span class="label field__label cutlist__label">Length, mm</span>
-              <input class="input input--num" type="number" name="length" value="2150" required min="1" max="20000" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__qty"><span class="label field__label cutlist__label">Qty</span>
-              <input class="input input--num" type="number" name="quantity" value="7" required min="1" max="500" step="1" inputmode="numeric"></label>
-            <label class="field column cutlist__section"><span class="label field__label cutlist__label">Section</span>
-              <input class="input" type="text" name="section" value="47x150 C24" required maxlength="50" list="section-options" autocomplete="off"></label>
-            <button class="button button--quiet button--square cutlist__remove" type="button" data-action="remove-piece" aria-label="Remove piece">×</button>
-            <p class="field-error cutlist__error" data-error-for="label" hidden>Piece: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="length" hidden>Length: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="quantity" hidden>Qty: <span data-error-text></span></p>
-            <p class="field-error cutlist__error" data-error-for="section" hidden>Section: <span data-error-text></span></p>
-          </li>
         </ul>
 
         <template id="piece-row-template">
@@ -233,19 +190,18 @@
       <fieldset class="planner__group column">
         <legend class="label planner__legend">Stock lengths, mm</legend>
         <div class="chips" id="stock-lengths">
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="2400" checked><span class="chip__face">2400</span></label>
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="3600" checked><span class="chip__face">3600</span></label>
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="4800" checked><span class="chip__face">4800</span></label>
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" value="6000" checked><span class="chip__face">6000</span></label>
         </div>
+
         <template id="stock-chip-template">
           <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" checked><span class="chip__face"></span></label>
         </template>
-        <p class="field-error" id="stock-message" hidden>Tick at least one stock length.</p>
+
+        <p class="field-error" id="stock-message" hidden></p>
         <div class="addrow">
           <label class="field column addrow__field"><span class="label field__label">Add a length, mm</span>
             <input class="input input--num" id="stock-add-input" type="number" min="1" max="20000" step="1" inputmode="numeric"></label>
           <button class="button button--quiet" type="button" data-action="add-stock">Add</button>
+          <button class="button button--quiet" type="button" id="delete-all-stock">Clear all</button>
         </div>
       </fieldset>
 
