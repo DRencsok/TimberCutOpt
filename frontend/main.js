@@ -22,6 +22,7 @@ const stockTemplate = document.getElementById("stock-chip-template");
 const stockMessage = document.getElementById("stock-message");
 const chipLength = document.getElementById("stock-add-input");
 const addStockButton = document.querySelector('[data-action="add-stock"]');
+const deleteStocks = document.getElementById("delete-all-stock");
 
 const FIELDS = ["label", "length", "quantity", "section"];
 
@@ -178,7 +179,10 @@ function validateList(arr, max) {
   return arr.filter((item) => item && typeof item === "object").slice(0, max);
 }
 
-cutList.addEventListener("input", saveCutList);
+cutList.addEventListener("input", () => {
+  saveCutList();
+  syncPlanButton();
+});
 
 const saved = loadCutList();
 
@@ -270,13 +274,19 @@ function syncStockControls() {
   saveCutList();
 }
 
+function rowsComplete() {
+  return [...cutList.querySelectorAll("input")].every(
+    (input) => input.value.trim() !== "",
+  );
+}
+
 function syncPlanButton() {
   const rows = rowCount();
 
   if (rows < 1 && !showOutput) {
     emptyState.hidden = false;
   }
-  planButton.disabled = rows < 1 || tickedCount() < 1;
+  planButton.disabled = rows < 1 || tickedCount() < 1 || !rowsComplete();
 }
 
 chipLength.addEventListener("keydown", (event) => {
@@ -287,3 +297,9 @@ chipLength.addEventListener("keydown", (event) => {
 });
 
 stockLengthList.addEventListener("change", syncStockControls);
+
+deleteStocks.addEventListener("click", () => {
+  stockLengthList.replaceChildren();
+
+  syncStockControls();
+});
