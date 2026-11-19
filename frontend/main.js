@@ -9,6 +9,7 @@ const MAX_ROWS = 50;
 const MAX_TICKED = 10;
 const MAX_STOCK_BOXES = 20;
 const MAX_STOCK_LENGTH = 20000;
+const DEFAULT_KERF = 3;
 
 const STORAGE_KEY = "timbercut.cutlist";
 
@@ -23,6 +24,9 @@ const stockMessage = document.getElementById("stock-message");
 const chipLength = document.getElementById("stock-add-input");
 const addStockButton = document.querySelector('[data-action="add-stock"]');
 const deleteStocks = document.getElementById("delete-all-stock");
+const stateInvalid = document.getElementById("state-invalid");
+const stateInvalidList = document.getElementById("invalid-messages");
+const planForm = document.getElementById("plan-form");
 
 const FIELDS = ["label", "length", "quantity", "section"];
 
@@ -38,6 +42,29 @@ const stockExamples = [
   { length: 4800, checked: true },
   { length: 6000, checked: true },
 ];
+
+const EXAMPLE_SOLVER = "greedy";
+
+const exampleBody = {
+  pieces: [
+    {
+      label: "wall stud",
+      length: 1950,
+      quantity: 16,
+      section: "47x100 C24",
+    },
+    {
+      label: "nogging",
+      length: 550,
+      quantity: 12,
+      section: "47x100 C24",
+    },
+    { label: "rafter", length: 2150, quantity: 7, section: "47x150 C24" },
+  ],
+  stock_lengths: [2400, 3600, 4800, 6000],
+  kerf: 3,
+  solver: "greedy",
+};
 
 const actions = {
   "add-piece": () => addRow(),
@@ -141,6 +168,7 @@ function fillStock(chip, values) {
 function loadExample() {
   cutList.replaceChildren();
   stockLengthList.replaceChildren();
+  const solver = querySelector(`input[value="${EXAMPLE_SOLVER}"]`);
 
   for (const piece of pieceExamples) {
     fillRow(addRow(false), piece);
@@ -302,4 +330,62 @@ deleteStocks.addEventListener("click", () => {
   stockLengthList.replaceChildren();
 
   syncStockControls();
+});
+
+async function solveRequest(requestBody) {
+  try {
+    const response = await fetch(`${API_URL}/api/solve/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(`error ${response.status}: ${JSON.stringify(errorBody)}`);
+    }
+    const data = await response.json();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function showInvalid(messages) {
+  const items = messages.map((message) => {
+    const li = document.createElement("li");
+    li.textContent = message;
+    return li;
+  });
+  stateInvalidList.replaceChildren(...items);
+  stateInvalid.hidden = messages.length === 0;
+}
+
+planForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const pieces = readRows();
+  const stocks = readStocks()
+    .filter((stock) => stock.checked)
+    .map((stock) => stock.length);
+
+  const errors = [];
+  if (stocks.length === 0) {
+    errors.push("You need to pick at least one stock length before planning.");
+  }
+  if (pieces.length === 0) {
+    errors.push(
+      "You need to add at least one piece to the cut list before planning.",
+    );
+  }
+  showInvalid(errors);
+  if (errors.length > 0) {
+    return;
+  }
+  const solver = planForm.elements.solver.value;
+
+  solveRequest({
+    pieces: pieces,
+    stocks: stocks,
+    kerf: DEFAULT_KERF,
+    solver: solver,
+  });
 });
