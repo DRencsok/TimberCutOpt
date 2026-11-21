@@ -44,27 +44,7 @@ const stockExamples = [
 ];
 
 const EXAMPLE_SOLVER = "greedy";
-
-const exampleBody = {
-  pieces: [
-    {
-      label: "wall stud",
-      length: 1950,
-      quantity: 16,
-      section: "47x100 C24",
-    },
-    {
-      label: "nogging",
-      length: 550,
-      quantity: 12,
-      section: "47x100 C24",
-    },
-    { label: "rafter", length: 2150, quantity: 7, section: "47x150 C24" },
-  ],
-  stock_lengths: [2400, 3600, 4800, 6000],
-  kerf: 3,
-  solver: "greedy",
-};
+const SOLVERS = ["greedy", "cp_sat"];
 
 const actions = {
   "add-piece": () => addRow(),
@@ -168,7 +148,7 @@ function fillStock(chip, values) {
 function loadExample() {
   cutList.replaceChildren();
   stockLengthList.replaceChildren();
-  const solver = querySelector(`input[value="${EXAMPLE_SOLVER}"]`);
+  planForm.elements.solver.value = EXAMPLE_SOLVER;
 
   for (const piece of pieceExamples) {
     fillRow(addRow(false), piece);
@@ -183,7 +163,11 @@ function saveCutList() {
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ pieces: readRows(), stocks: readStocks() }),
+      JSON.stringify({
+        pieces: readRows(),
+        stocks: readStocks(),
+        solver: planForm.elements.solver.value,
+      }),
     );
   } catch {
     // Storage blocked or full: the page keeps working, it just won't store.
@@ -196,9 +180,10 @@ function loadCutList() {
     return {
       pieces: validateList(data?.pieces, MAX_ROWS),
       stocks: validateList(data?.stocks, MAX_STOCK_BOXES),
+      solver: SOLVERS.includes(data?.solver) ? data.solver : null,
     };
   } catch {
-    return { pieces: [], stocks: [] };
+    return { pieces: [], stocks: [], solver: null };
   }
 }
 
@@ -212,7 +197,17 @@ cutList.addEventListener("input", () => {
   syncPlanButton();
 });
 
+planForm.addEventListener("change", (event) => {
+  if (event.target.name === "solver") {
+    saveCutList();
+  }
+});
+
 const saved = loadCutList();
+
+if (saved.solver) {
+  planForm.elements.solver.value = saved.solver;
+}
 
 if (saved.stocks.length > 0) {
   for (const stock of saved.stocks) {
@@ -384,7 +379,7 @@ planForm.addEventListener("submit", (event) => {
 
   solveRequest({
     pieces: pieces,
-    stocks: stocks,
+    stock_lengths: stocks,
     kerf: DEFAULT_KERF,
     solver: solver,
   });
