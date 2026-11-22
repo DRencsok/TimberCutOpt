@@ -27,7 +27,15 @@ const deleteStocks = document.getElementById("delete-all-stock");
 const stateInvalid = document.getElementById("state-invalid");
 const stateInvalidList = document.getElementById("invalid-messages");
 const planForm = document.getElementById("plan-form");
-
+//result
+const ruler = document.getElementById("plan");
+const planSections = document.getElementById("plan-sections");
+const planSectionTemplate = document.getElementById("plan-section-template");
+const stackTemplate = document.getElementById("stack-template");
+const boardPieceTemplate = document.getElementById("board-piece-template");
+const boardKerfTemplate = document.getElementById("board-kerf-template");
+const boardOffcutTemplate = document.getElementById("board-offcut-template");
+const stackUnderTemplate = document.getElementById("stack-under-template");
 const FIELDS = ["label", "length", "quantity", "section"];
 
 const pieceExamples = [
@@ -82,11 +90,16 @@ function syncRowControls() {
   syncPlanButton();
 }
 
+// Helpers *****************
+function cloneTemplate(template) {
+  return template.content.firstElementChild.cloneNode(true);
+}
+
 // Pieces **************************************************
 function addRow(focus = true) {
   if (rowCount() >= MAX_ROWS) return;
 
-  const row = rowTemplate.content.firstElementChild.cloneNode(true);
+  const row = cloneTemplate(rowTemplate);
   cutList.append(row);
   syncRowControls();
   saveCutList();
@@ -262,7 +275,7 @@ function addChip() {
 }
 
 function newChip() {
-  const chip = stockTemplate.content.firstElementChild.cloneNode(true);
+  const chip = cloneTemplate(stockTemplate);
   stockLengthList.append(chip);
   return chip;
 }
@@ -327,6 +340,7 @@ deleteStocks.addEventListener("click", () => {
   syncStockControls();
 });
 
+//  API calling and boards drawing ************************
 async function solveRequest(requestBody) {
   try {
     const response = await fetch(`${API_URL}/api/solve/`, {
@@ -339,7 +353,7 @@ async function solveRequest(requestBody) {
       throw new Error(`error ${response.status}: ${JSON.stringify(errorBody)}`);
     }
     const data = await response.json();
-    console.log(data);
+    return data;
   } catch (error) {
     console.error(error);
   }
@@ -355,7 +369,7 @@ function showInvalid(messages) {
   stateInvalid.hidden = messages.length === 0;
 }
 
-planForm.addEventListener("submit", (event) => {
+planForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const pieces = readRows();
   const stocks = readStocks()
@@ -377,10 +391,98 @@ planForm.addEventListener("submit", (event) => {
   }
   const solver = planForm.elements.solver.value;
 
-  solveRequest({
-    pieces: pieces,
-    stock_lengths: stocks,
-    kerf: DEFAULT_KERF,
-    solver: solver,
-  });
+  try {
+    const result = await solveRequest({
+      pieces: pieces,
+      stock_lengths: stocks,
+      kerf: DEFAULT_KERF,
+      solver: solver,
+    });
+
+    drawData(result.boards);
+  } catch (error) {
+    console.log(error);
+  }
 });
+
+function groupBySection(boards) {
+  return Map.groupBy(boards, (board) => board.section);
+}
+
+function stackKey(board) {
+  const cuts = board.cuts.map((cut) => [cut.label, cut.length]);
+  return JSON.stringify([board.stock_length, cuts]);
+}
+
+function groupIntoStacks(boards) {
+  const groups = Map.groupBy(boards, stackKey);
+  return [...groups.values()]
+    .map((group) => ({ board: group[0], count: group.length }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function drawData(boards) {
+  planSections.replaceChildren();
+  for (const [section, sectionBoards] of groupBySection(boards)) {
+    planSections.append(makeSection(section, groupIntoStacks(sectionBoards)));
+  }
+}
+
+function makeSection(name, stacks) {
+  const sectionEl = cloneTemplate(planSectionTemplate);
+  sectionEl.querySelector("[data-section-name]").textContent = name;
+  const stacksEl = sectionEl.querySelector("[data-stacks]");
+  for (const stack of stacks) {
+    stacksEl.append(makeStack(stack));
+  }
+  return sectionEl;
+}
+
+function makeStack({ board, count }) {
+  const stackEl = cloneTemplate(stackTemplate);
+  stackEl.querySelector("[data-stack-count]").textContent = `${count}×`;
+  stackEl.querySelector("[data-stack-offcut]").textContent = board.offcut;
+  fillBoard(stackEl.querySelector("[data-board]"), board);
+  stackEl.style.setProperty("--stock", board.stock_length);
+  const boardsEl = stackEl.querySelector("[data-stack-boards]");
+  if (count > 1) {
+    for (let i = 1; i < count; i++) {
+      boardsEl.append(cloneTemplate(stackUnderTemplate));
+    }
+  }
+  return stackEl;
+}
+
+function fillBoard(element, board) {
+  const lastIndex = board.cuts.length - 1;
+
+  for (const [index, cut] of board.cuts.entries()) {
+    const pieceEl = cloneTemplate(boardPieceTemplate);
+    pieceEl.style.setProperty("--len", cut.length);
+    pieceEl.querySelector("[data-piece-length]").textContent = cut.length;
+    pieceEl.querySelector("[data-piece-name]").textContent = cut.label;
+    element.append(pieceEl);
+
+    if (index < lastIndex || board.offcut > 0) {
+      const kerfEl = cloneTemplate(boardKerfTemplate);
+      kerfEl.style.setProperty("--len", DEFAULT_KERF);
+      element.append(kerfEl);
+    }
+  }
+
+  if (board.offcut > 0) {
+    const offcutEl = cloneTemplate(boardOffcutTemplate);
+    offcutEl.style.setProperty("--len", board.offcut);
+    element.append(offcutEl);
+  }
+  const cutsText = board.cuts
+    .map((cut) => `${cut.label} ${cut.length}`)
+    .join(", ");
+
+  let label = `${board.stock_length} mm board cut into ${cutsText}`;
+  if (board.offcut > 0) {
+    label += `, offcut ${board.offcut} mm`;
+  }
+
+  element.setAttribute("aria-label", label);
+}
