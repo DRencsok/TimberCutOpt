@@ -224,128 +224,23 @@
     <div class="output" id="output">
 
       <!-- RESULTS -->
-      <section class="results column" id="results" data-state="results" aria-labelledby="plan-headline">
+      <section class="results column" id="results" data-state="results" aria-labelledby="plan-headline" hidden>
         <h2 class="statement statement--display" id="plan-headline">Buy 11 boards. 3.55 m ends up as waste.</h2>
 
         <!-- --scale is the longest stock length in mm. Every board is drawn
              against it, so a 3600 board is 60% as wide as a 6000 board. -->
-        <div class="plan column" id="plan" style="--scale: 6000">
+        <div class="plan column" id="plan">
 
           <!-- The tape. Plain elements: one tick per 100 mm and one more for
                the end. Every 5th and 10th tick is taller (nth-child in the
                CSS), and every 10th carries its label. -->
           <div class="plan__row">
             <div class="ruler" id="ruler" aria-hidden="true">
-              <span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
-              <span class="ruler__tick"><span class="ruler__label">1000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
-              <span class="ruler__tick"><span class="ruler__label">2000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
-              <span class="ruler__tick"><span class="ruler__label">3000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
-              <span class="ruler__tick"><span class="ruler__label">4000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
-              <span class="ruler__tick"><span class="ruler__label">5000</span></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span><span class="ruler__tick"></span>
-              <span class="ruler__tick"><span class="ruler__label">6000</span></span>
             </div>
             <span class="label plan__offcut-head">Offcut</span>
           </div>
 
           <div class="plan__sections column" id="plan-sections">
-
-            <section class="plan__section column">
-              <h3 class="heading heading--sub" data-section-name>47x100 C24</h3>
-              <ol class="plan__stacks column" data-stacks role="list">
-                <li class="plan__row stack" data-stack style="--stock: 6000">
-                  <span class="stack__count" data-stack-count>5×</span>
-                  <div class="stack__boards" data-stack-boards>
-                    <div class="board" data-board role="img" aria-label="6000 mm board cut into wall stud 1950, wall stud 1950, wall stud 1950, offcut 141 mm">
-                      <span class="board__seg board__seg--piece" style="--len: 1950"><span class="board__len">1950</span><span class="board__name">wall stud</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 1950"><span class="board__len">1950</span><span class="board__name">wall stud</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 1950"><span class="board__len">1950</span><span class="board__name">wall stud</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--offcut" style="--len: 141"></span>
-                    </div>
-                    <span class="stack__under"></span><span class="stack__under"></span><span class="stack__under"></span><span class="stack__under"></span>
-                  </div>
-                  <span class="stack__offcut" data-stack-offcut>141</span>
-                </li>
-                <li class="plan__row stack" data-stack style="--stock: 6000">
-                  <span class="stack__count" data-stack-count>1×</span>
-                  <div class="stack__boards" data-stack-boards>
-                    <div class="board" data-board role="img" aria-label="6000 mm board cut into wall stud 1950, nogging 550, nogging 550, nogging 550, nogging 550, nogging 550, nogging 550, offcut 729 mm">
-                      <span class="board__seg board__seg--piece" style="--len: 1950"><span class="board__len">1950</span><span class="board__name">wall stud</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--offcut" style="--len: 729"></span>
-                    </div>
-                  </div>
-                  <span class="stack__offcut" data-stack-offcut>729</span>
-                </li>
-                <li class="plan__row stack" data-stack style="--stock: 3600">
-                  <span class="stack__count" data-stack-count>1×</span>
-                  <div class="stack__boards" data-stack-boards>
-                    <div class="board" data-board role="img" aria-label="3600 mm board cut into nogging 550, nogging 550, nogging 550, nogging 550, nogging 550, nogging 550, offcut 282 mm">
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 550"><span class="board__len">550</span><span class="board__name">nogging</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--offcut" style="--len: 282"></span>
-                    </div>
-                  </div>
-                  <span class="stack__offcut" data-stack-offcut>282</span>
-                </li>
-              </ol>
-            </section>
-
-            <section class="plan__section column">
-              <h3 class="heading heading--sub" data-section-name>47x150 C24</h3>
-              <ol class="plan__stacks column" data-stacks role="list">
-                <li class="plan__row stack" data-stack style="--stock: 4800">
-                  <span class="stack__count" data-stack-count>3×</span>
-                  <div class="stack__boards" data-stack-boards>
-                    <div class="board" data-board role="img" aria-label="4800 mm board cut into rafter 2150, rafter 2150, offcut 494 mm">
-                      <span class="board__seg board__seg--piece" style="--len: 2150"><span class="board__len">2150</span><span class="board__name">rafter</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--piece" style="--len: 2150"><span class="board__len">2150</span><span class="board__name">rafter</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--offcut" style="--len: 494"></span>
-                    </div>
-                    <span class="stack__under"></span><span class="stack__under"></span>
-                  </div>
-                  <span class="stack__offcut" data-stack-offcut>494</span>
-                </li>
-                <li class="plan__row stack" data-stack style="--stock: 2400">
-                  <span class="stack__count" data-stack-count>1×</span>
-                  <div class="stack__boards" data-stack-boards>
-                    <div class="board" data-board role="img" aria-label="2400 mm board cut into rafter 2150, offcut 247 mm">
-                      <span class="board__seg board__seg--piece" style="--len: 2150"><span class="board__len">2150</span><span class="board__name">rafter</span></span>
-                      <span class="board__seg board__seg--kerf" style="--len: 3"></span>
-                      <span class="board__seg board__seg--offcut" style="--len: 247"></span>
-                    </div>
-                  </div>
-                  <span class="stack__offcut" data-stack-offcut>247</span>
-                </li>
-              </ol>
-            </section>
-
           </div>
 
           <template id="plan-section-template">

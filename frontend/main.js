@@ -12,6 +12,7 @@ const MAX_STOCK_LENGTH = 20000;
 const DEFAULT_KERF = 3;
 
 const STORAGE_KEY = "timbercut.cutlist";
+const RESULT_KEY = "timbercut.result";
 
 const docsLink = document.getElementById("api-docs-link");
 const cutList = document.getElementById("cut-list");
@@ -28,7 +29,7 @@ const stateInvalid = document.getElementById("state-invalid");
 const stateInvalidList = document.getElementById("invalid-messages");
 const planForm = document.getElementById("plan-form");
 //result
-const ruler = document.getElementById("plan");
+const results = document.getElementById("results");
 const planSections = document.getElementById("plan-sections");
 const planSectionTemplate = document.getElementById("plan-section-template");
 const stackTemplate = document.getElementById("stack-template");
@@ -36,6 +37,9 @@ const boardPieceTemplate = document.getElementById("board-piece-template");
 const boardKerfTemplate = document.getElementById("board-kerf-template");
 const boardOffcutTemplate = document.getElementById("board-offcut-template");
 const stackUnderTemplate = document.getElementById("stack-under-template");
+const plan = document.getElementById("plan");
+const ruler = document.getElementById("ruler");
+
 const FIELDS = ["label", "length", "quantity", "section"];
 
 const pieceExamples = [
@@ -162,6 +166,8 @@ function loadExample() {
   cutList.replaceChildren();
   stockLengthList.replaceChildren();
   planForm.elements.solver.value = EXAMPLE_SOLVER;
+  localStorage.removeItem(RESULT_KEY);
+  planSections.replaceChildren();
 
   for (const piece of pieceExamples) {
     fillRow(addRow(false), piece);
@@ -205,6 +211,32 @@ function validateList(arr, max) {
   return arr.filter((item) => item && typeof item === "object").slice(0, max);
 }
 
+function saveResult(result) {
+  try {
+    localStorage.setItem(RESULT_KEY, JSON.stringify(result));
+  } catch {}
+}
+
+function loadResult() {
+  try {
+    const result = JSON.parse(localStorage.getItem(RESULT_KEY));
+    if (!result || typeof result !== "object") return null;
+    if (!Array.isArray(result.boards)) return null;
+    const boardsValid = result.boards.every(
+      (board) =>
+        board &&
+        typeof board === "object" &&
+        Array.isArray(board.cuts) &&
+        typeof board.stock_length === "number",
+    );
+    if (!boardsValid) return null;
+    if (!result.summary || typeof result.summary !== "object") return null;
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 cutList.addEventListener("input", () => {
   saveCutList();
   syncPlanButton();
@@ -240,6 +272,11 @@ if (saved.pieces.length > 0) {
   addRow(false);
 }
 syncStockControls();
+
+const savedBoards = loadResult();
+if (savedBoards) {
+  renderResult(savedBoards);
+}
 
 // Stock input **********************************************
 function showStockMessage(message) {
@@ -342,21 +379,16 @@ deleteStocks.addEventListener("click", () => {
 
 //  API calling and boards drawing ************************
 async function solveRequest(requestBody) {
-  try {
-    const response = await fetch(`${API_URL}/api/solve/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
-    if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(`error ${response.status}: ${JSON.stringify(errorBody)}`);
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error(error);
+  const response = await fetch(`${API_URL}/api/solve/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody),
+  });
+  if (!response.ok) {
+    const errorBody = await response.json();
+    throw new Error(`error ${response.status}: ${JSON.stringify(errorBody)}`);
   }
+  return response.json();
 }
 
 function showInvalid(messages) {
@@ -399,7 +431,8 @@ planForm.addEventListener("submit", async (event) => {
       solver: solver,
     });
 
-    drawData(result.boards);
+    renderResult(result);
+    saveResult(result);
   } catch (error) {
     console.log(error);
   }
@@ -421,10 +454,42 @@ function groupIntoStacks(boards) {
     .sort((a, b) => b.count - a.count);
 }
 
+function renderResult({ boards, summary, shopping_list }) {
+  results.hidden = false;
+  drawData(boards);
+  // drawSummary(summary)
+  // drawShoppingList(shopping_list)
+}
+
 function drawData(boards) {
   planSections.replaceChildren();
   for (const [section, sectionBoards] of groupBySection(boards)) {
     planSections.append(makeSection(section, groupIntoStacks(sectionBoards)));
+  }
+  showOutput = true;
+  const longest = Math.max(...boards.map((board) => board.stock_length));
+  const scale = Math.ceil(longest / 100) * 100;
+  plan.style.setProperty("--scale", scale);
+  drawRuler(scale);
+}
+
+function drawRuler(length) {
+  ruler.replaceChildren();
+  const tickTemplate = document.getElementById("ruler-tick-template");
+  const majorTickTemplate = document.getElementById(
+    "ruler-major-tick-template",
+  );
+  const ticks = length / 100;
+
+  for (let i = 0; i <= ticks; i++) {
+    if (i % 10 === 0 && i !== 0) {
+      const majorTick = cloneTemplate(majorTickTemplate);
+      ruler.append(majorTick);
+      majorTick.querySelector("[data-ruler-label]").textContent = i * 100;
+    } else {
+      const tick = cloneTemplate(tickTemplate);
+      ruler.append(tick);
+    }
   }
 }
 
@@ -445,11 +510,11 @@ function makeStack({ board, count }) {
   fillBoard(stackEl.querySelector("[data-board]"), board);
   stackEl.style.setProperty("--stock", board.stock_length);
   const boardsEl = stackEl.querySelector("[data-stack-boards]");
-  if (count > 1) {
-    for (let i = 1; i < count; i++) {
-      boardsEl.append(cloneTemplate(stackUnderTemplate));
-    }
+
+  for (let i = 1; i < count; i++) {
+    boardsEl.append(cloneTemplate(stackUnderTemplate));
   }
+
   return stackEl;
 }
 
