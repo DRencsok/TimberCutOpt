@@ -6,17 +6,6 @@
   templates below, and never writes or queries a class name, so the look can
   change without breaking the behaviour, and the other way round (decision 30).
 
-  THE STATIC EXAMPLE
-  The cut list rows, the plan and the totals show the garden shed, so the page
-  can be judged without JavaScript. The JavaScript replaces all of it.
-
-  WHAT IS VISIBLE
-  The right column (#output) shows exactly one [data-state] block at a time.
-  In this static file that is "results". Every other block has the `hidden`
-  attribute: remove it in the dev tools to check the block.
-  #state-invalid is the exception: it lives in the form and can show together
-  with any of the others.
-
   IDS
     Form
       #plan-form             the whole form (listen for "submit" here)
@@ -85,6 +74,10 @@
       data-piece-length           in a piece segment: "1950"
       data-piece-name             in a piece segment: "wall stud"
       data-ruler-label            in a major tick: "1000"
+      data-shopping-section       in a shopping row: "47x100 C24"
+      data-shopping-length        in a shopping row: "3600"
+      data-shopping-quantity      in a shopping row: "6"
+      data-chip-length            in a stock chip: "4800"
 
   FORM FIELD NAMES
       label, length, quantity, section (in each row), stock_length (chips),
@@ -97,16 +90,6 @@
                [data-piece-name], set style="--len: 1950"
       saw cut  #board-kerf-template, set style="--len: 3"
       offcut   #board-offcut-template, set style="--len: 141"
-  Append them to [data-board] in order. The CSS turns --len, --stock and
-  --scale into widths, so the JavaScript never calculates a percentage. The
-  API leaves a saw cut after every piece while there is an offcut, so the
-  segments add up to the stock length.
-  A stack of n boards gets n − 1 clones of #stack-under-template, appended
-  to [data-stack-boards] after the board.
-  The ruler gets one clone per 100 mm of --scale, plus one for the end:
-  #ruler-major-tick-template at 1000, 2000 … (numeral in
-  [data-ruler-label]), #ruler-tick-template for every other tick, 0
-  included. The CSS makes every 5th and 10th tick taller by itself.
 
   MARKING A FIELD INVALID
   Set aria-invalid="true" on the input, put the text in the row's matching
@@ -174,7 +157,22 @@
 
         <datalist id="section-options">
           <option value="47x100 C24"></option>
+          <option value="47x125 C24"></option>
           <option value="47x150 C24"></option>
+          <option value="47x175 C24"></option>
+          <option value="47x200 C24"></option>
+          <option value="50x100 C24"></option>
+          <option value="50x150 C24"></option>
+          <option value="50x200 C24"></option>
+          <option value="75x100 C24"></option>
+          <option value="75x150 C24"></option>
+          <option value="75x200 C24"></option>
+          <option value="100x100 C24"></option>
+          <option value="100x150 C24"></option>
+          <option value="100x200 C24"></option>
+          <option value="150x150 C24"></option>
+          <option value="150x200 C24"></option>
+          <option value="200x200 C24"></option>
         </datalist>
 
         <div class="planner__actions">
@@ -192,7 +190,7 @@
         </div>
 
         <template id="stock-chip-template">
-          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" checked><span class="chip__face"></span></label>
+          <label class="chip"><input class="chip__input visually-hidden" type="checkbox" name="stock_length" checked><span class="chip__face" data-chip-length></span></label>
         </template>
 
         <p class="field-error" id="stock-message" hidden></p>
@@ -200,7 +198,7 @@
           <label class="field column addrow__field"><span class="label field__label">Add a length, mm</span>
             <input class="input input--num" id="stock-add-input" type="number" min="1" max="20000" step="1" inputmode="numeric"></label>
           <button class="button button--quiet" type="button" data-action="add-stock">Add</button>
-          <button class="button button--quiet" type="button" id="delete-all-stock">Clear all</button>
+          <button class="button button--quiet" type="button" id="delete-all-stock">Clear All</button>
         </div>
       </fieldset>
 
@@ -216,7 +214,7 @@
       </fieldset>
 
       <div class="planner__group column">
-        <p class="note"><span class="note__lead"><span id="kerf-value">3</span> mm saw cut</span> is taken off at every cut.</p>
+        <p class="note"><span class="note__lead"><span id="kerf-value"></span> mm saw cut</span> is taken off at every cut.</p>
         <button class="button button--cta" type="submit" id="plan-button">Plan cuts</button>
       </div>
     </form>
@@ -225,7 +223,7 @@
 
       <!-- RESULTS -->
       <section class="results column" id="results" data-state="results" aria-labelledby="plan-headline" hidden>
-        <h2 class="statement statement--display" id="plan-headline">Buy 11 boards. 3.55 m ends up as waste.</h2>
+        <h2 class="statement statement--display" id="plan-headline"></h2>
 
         <!-- --scale is the longest stock length in mm. Every board is drawn
              against it, so a 3600 board is 60% as wide as a 6000 board. -->
@@ -286,8 +284,7 @@
             <span class="stack__under"></span>
           </template>
 
-          <!-- A key, because the offcut is drawn as bare tape, not hatched as
-               in the reference. -->
+          <!--Legend for the keys-->
           <ul class="key">
             <li class="key__item"><span class="key__swatch key__swatch--piece"></span>Piece, length in mm</li>
             <li class="key__item"><span class="key__swatch key__swatch--kerf"></span>Saw cut</li>
@@ -307,36 +304,24 @@
               </tr>
             </thead>
             <tbody id="shopping-body">
-              <tr><td class="table__cell">47x100 C24</td><td class="table__cell table__cell--num">3600</td><td class="table__cell table__cell--num table__cell--strong">1</td></tr>
-              <tr><td class="table__cell">47x100 C24</td><td class="table__cell table__cell--num">6000</td><td class="table__cell table__cell--num table__cell--strong">6</td></tr>
-              <tr><td class="table__cell">47x150 C24</td><td class="table__cell table__cell--num">2400</td><td class="table__cell table__cell--num table__cell--strong">1</td></tr>
-              <tr><td class="table__cell">47x150 C24</td><td class="table__cell table__cell--num">4800</td><td class="table__cell table__cell--num table__cell--strong">3</td></tr>
             </tbody>
           </table>
           <template id="shopping-row-template">
-            <tr><td class="table__cell"></td><td class="table__cell table__cell--num"></td><td class="table__cell table__cell--num table__cell--strong"></td></tr>
+            <tr><td class="table__cell" data-shopping-section></td><td class="table__cell table__cell--num" data-shopping-length></td><td class="table__cell table__cell--num table__cell--strong" data-shopping-quantity></td></tr>
           </template>
 
           <table class="table">
             <caption class="heading heading--sub table__caption">Timber totals</caption>
             <tbody>
-              <tr><th class="table__cell table__cell--head" scope="row">Boards</th><td class="table__cell table__cell--num" id="total-boards">11</td></tr>
-              <tr><th class="table__cell table__cell--head" scope="row">Bought</th><td class="table__cell table__cell--num" id="total-bought">56.40 m</td></tr>
-              <tr><th class="table__cell table__cell--head" scope="row">Used in pieces</th><td class="table__cell table__cell--num" id="total-used">52.85 m</td></tr>
-              <tr><th class="table__cell table__cell--head table__cell--strong" scope="row">Waste</th><td class="table__cell table__cell--num table__cell--strong" id="total-waste">3.55 m, 6.3%</td></tr>
+              <tr><th class="table__cell table__cell--head" scope="row">Boards</th><td class="table__cell table__cell--num" id="total-boards"></td></tr>
+              <tr><th class="table__cell table__cell--head" scope="row">Bought</th><td class="table__cell table__cell--num" id="total-bought"></td></tr>
+              <tr><th class="table__cell table__cell--head" scope="row">Used in pieces</th><td class="table__cell table__cell--num" id="total-used"></td></tr>
+              <tr><th class="table__cell table__cell--head table__cell--strong" scope="row">Waste</th><td class="table__cell table__cell--num table__cell--strong" id="total-waste"></td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- STATE BLOCKS
-           One pattern for all of them, taken from TapeStates: a heavy rule,
-           one statement in the display face, at most one line of help and one
-           button. The small headings of the reference ("Server
-           asleep", "Solving") are left out: they named the artboards, and on
-           the real page they would only repeat the statement.
-           role="status" is for news the user is waiting for, role="alert" for
-           problems. Both are read out when `hidden` is removed. -->
 
       <section class="state column ruled" id="state-empty" data-state="empty" hidden>
         <h2 class="statement">Add your first piece to see what to buy.</h2>

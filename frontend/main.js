@@ -28,6 +28,7 @@ const deleteStocks = document.getElementById("delete-all-stock");
 const stateInvalid = document.getElementById("state-invalid");
 const stateInvalidList = document.getElementById("invalid-messages");
 const planForm = document.getElementById("plan-form");
+const kerfValue = document.getElementById("kerf-value");
 //result
 const results = document.getElementById("results");
 const planSections = document.getElementById("plan-sections");
@@ -39,6 +40,14 @@ const boardOffcutTemplate = document.getElementById("board-offcut-template");
 const stackUnderTemplate = document.getElementById("stack-under-template");
 const plan = document.getElementById("plan");
 const ruler = document.getElementById("ruler");
+// summary
+const totalBoards = document.getElementById("total-boards");
+const totalBought = document.getElementById("total-bought");
+const totalUsed = document.getElementById("total-used");
+const totalWaste = document.getElementById("total-waste");
+const planHeadline = document.getElementById("plan-headline");
+const shoppingBody = document.getElementById("shopping-body");
+const shoppingRowTemplate = document.getElementById("shopping-row-template");
 
 const FIELDS = ["label", "length", "quantity", "section"];
 
@@ -65,9 +74,9 @@ const actions = {
   "add-stock": () => addChip(),
 };
 
+kerfValue.textContent = DEFAULT_KERF;
 // A switch for the output on the right to not show an empty-state alert
 let showOutput = false;
-emptyState.hidden = true;
 
 docsLink.href = `${API_URL}/api/docs/`;
 
@@ -158,7 +167,7 @@ function fillRow(row, piece) {
 function fillStock(chip, values) {
   const input = chip.querySelector('input[name="stock_length"]');
   input.value = values["length"];
-  chip.querySelector(".chip__face").textContent = values["length"];
+  chip.querySelector("[data-chip-length]").textContent = values["length"];
   input.checked = values["checked"];
 }
 
@@ -273,9 +282,9 @@ if (saved.pieces.length > 0) {
 }
 syncStockControls();
 
-const savedBoards = loadResult();
-if (savedBoards) {
-  renderResult(savedBoards);
+const savedResult = loadResult();
+if (savedResult) {
+  renderResult(savedResult);
 }
 
 // Stock input **********************************************
@@ -385,8 +394,11 @@ async function solveRequest(requestBody) {
     body: JSON.stringify(requestBody),
   });
   if (!response.ok) {
-    const errorBody = await response.json();
-    throw new Error(`error ${response.status}: ${JSON.stringify(errorBody)}`);
+    const error = new Error(`Solve failed with status ${response.status}`);
+    error.status = response.status;
+    error.retryAfter = response.headers.get("Retry-After");
+    error.body = await response.json().catch(() => null);
+    throw error;
   }
   return response.json();
 }
@@ -423,19 +435,26 @@ planForm.addEventListener("submit", async (event) => {
   }
   const solver = planForm.elements.solver.value;
 
-  try {
-    const result = await solveRequest({
-      pieces: pieces,
-      stock_lengths: stocks,
-      kerf: DEFAULT_KERF,
-      solver: solver,
-    });
-
-    renderResult(result);
-    saveResult(result);
-  } catch (error) {
-    console.log(error);
+  const requestBody = {
+    pieces: pieces,
+    stock_lengths: stocks,
+    kerf: DEFAULT_KERF,
+    solver: solver,
+  };
+  if (solver === "cp_sat") {
+    requestBody.time_limit = 10;
   }
+
+  let result;
+  try {
+    result = await solveRequest(requestBody);
+  } catch (error) {
+    console.error(error.status, error.body);
+    return;
+  }
+  const plannedResult = { ...result, kerf: requestBody.kerf };
+  renderResult(plannedResult);
+  saveResult(plannedResult);
 });
 
 function groupBySection(boards) {
@@ -454,17 +473,19 @@ function groupIntoStacks(boards) {
     .sort((a, b) => b.count - a.count);
 }
 
-function renderResult({ boards, summary, shopping_list }) {
+function renderResult({ boards, summary, shopping_list, kerf }) {
   results.hidden = false;
-  drawData(boards);
-  // drawSummary(summary)
-  // drawShoppingList(shopping_list)
+  drawData(boards, kerf);
+  drawSummary(summary);
+  drawShoppingList(shopping_list);
 }
 
-function drawData(boards) {
+function drawData(boards, kerf) {
   planSections.replaceChildren();
   for (const [section, sectionBoards] of groupBySection(boards)) {
-    planSections.append(makeSection(section, groupIntoStacks(sectionBoards)));
+    planSections.append(
+      makeSection(section, groupIntoStacks(sectionBoards), kerf),
+    );
   }
   showOutput = true;
   const longest = Math.max(...boards.map((board) => board.stock_length));
@@ -493,21 +514,21 @@ function drawRuler(length) {
   }
 }
 
-function makeSection(name, stacks) {
+function makeSection(name, stacks, kerf) {
   const sectionEl = cloneTemplate(planSectionTemplate);
   sectionEl.querySelector("[data-section-name]").textContent = name;
   const stacksEl = sectionEl.querySelector("[data-stacks]");
   for (const stack of stacks) {
-    stacksEl.append(makeStack(stack));
+    stacksEl.append(makeStack(stack, kerf));
   }
   return sectionEl;
 }
 
-function makeStack({ board, count }) {
+function makeStack({ board, count }, kerf) {
   const stackEl = cloneTemplate(stackTemplate);
   stackEl.querySelector("[data-stack-count]").textContent = `${count}×`;
   stackEl.querySelector("[data-stack-offcut]").textContent = board.offcut;
-  fillBoard(stackEl.querySelector("[data-board]"), board);
+  fillBoard(stackEl.querySelector("[data-board]"), board, kerf);
   stackEl.style.setProperty("--stock", board.stock_length);
   const boardsEl = stackEl.querySelector("[data-stack-boards]");
 
@@ -518,7 +539,7 @@ function makeStack({ board, count }) {
   return stackEl;
 }
 
-function fillBoard(element, board) {
+function fillBoard(element, board, kerf) {
   const lastIndex = board.cuts.length - 1;
 
   for (const [index, cut] of board.cuts.entries()) {
@@ -530,7 +551,7 @@ function fillBoard(element, board) {
 
     if (index < lastIndex || board.offcut > 0) {
       const kerfEl = cloneTemplate(boardKerfTemplate);
-      kerfEl.style.setProperty("--len", DEFAULT_KERF);
+      kerfEl.style.setProperty("--len", kerf);
       element.append(kerfEl);
     }
   }
@@ -550,4 +571,26 @@ function fillBoard(element, board) {
   }
 
   element.setAttribute("aria-label", label);
+}
+
+function drawSummary(summary) {
+  totalBoards.textContent = summary.board_count;
+  totalBought.textContent = `${(summary.stock_length_total / 1000).toFixed(2)} m`;
+  totalUsed.textContent = `${(summary.piece_length_total / 1000).toFixed(2)} m`;
+  totalWaste.textContent = `${(summary.waste / 1000).toFixed(2)} m, ${summary.waste_percent.toFixed(1)}%`;
+  planHeadline.textContent = `Buy ${summary.board_count} boards. ${(summary.waste / 1000).toFixed(2)} m ends up as waste.`;
+}
+
+function drawShoppingList(list) {
+  shoppingBody.replaceChildren();
+  list.forEach((item) => {
+    const shoppingEl = cloneTemplate(shoppingRowTemplate);
+    shoppingEl.querySelector("[data-shopping-section]").textContent =
+      item.section;
+    shoppingEl.querySelector("[data-shopping-length]").textContent =
+      item.length;
+    shoppingEl.querySelector("[data-shopping-quantity]").textContent =
+      item.quantity;
+    shoppingBody.append(shoppingEl);
+  });
 }
